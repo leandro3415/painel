@@ -283,14 +283,21 @@
       <div class="filtro-periodo">
         <label for="periodo">Período dos gastos:</label>
         <select id="periodo">
-          <option value="30">Últimos 30 dias</option>
-          <option value="7">Últimos 7 dias</option>
-          <option value="90">Últimos 90 dias</option>
+          <option value="0" selected>Todo o período</option>
+          <option value="7">7 dias</option>
+          <option value="15">15 dias</option>
+          <option value="30">30 dias</option>
         </select>
       </div>
     </header>
 
     <div id="erro" class="erro-msg" style="display: none;"></div>
+    <div id="aviso-sem-id" class="erro-msg" style="display: none;">
+      <strong>🔗 Acesse com seu link pessoal</strong><br><br>
+      Para ver apenas os seus gastos e lembretes, use a URL com seu número (ou ID):<br><br>
+      <code id="exemplo-link">—</code><br><br>
+      Exemplo: <code>painel-alfa.vercel.app/painel/558897849022</code> ou <code>?id=558897849022</code>
+    </div>
     <div id="aviso-file" class="erro-msg" style="display: none;">
       <strong>⚠️ Abrindo pelo arquivo (file://) não acessa o Supabase.</strong><br><br>
       O navegador bloqueia requisições quando a página é aberta direto do disco. Para ver os dados:<br><br>
@@ -419,15 +426,42 @@
     function mostrarErro(msg, detalhe) {
       $('loading').style.display = 'none';
       $('conteudo').style.display = 'none';
+      if ($('aviso-sem-id')) $('aviso-sem-id').style.display = 'none';
       const el = $('erro');
       el.innerHTML = msg + (detalhe ? '<br><br><small>' + detalhe + '</small>' : '');
       el.style.display = 'block';
       if (detalhe) console.error('FinLeve Supabase:', detalhe);
     }
 
+    // Lê o ID do usuário (celular/numero) da URL: /painel/558897849022 ou ?id=558897849022
+    function getIdFromUrl() {
+      const path = window.location.pathname.replace(/\/$/, '');
+      const partes = path.split('/');
+      const ultimo = partes[partes.length - 1];
+      if (ultimo && ultimo !== 'painel' && ultimo !== 'index.html') return ultimo.trim();
+      const params = new URLSearchParams(window.location.search);
+      return (params.get('id') || params.get('celular') || '').trim();
+    }
+
     async function carregarDados() {
       if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_URL === 'SUA_SUPABASE_URL' || SUPABASE_ANON_KEY === 'SUA_SUPABASE_ANON_KEY') {
         mostrarErro('Configure SUPABASE_URL e SUPABASE_ANON_KEY no início do script (index.html).');
+        return;
+      }
+
+      const userId = getIdFromUrl();
+      if (!userId) {
+        $('loading').style.display = 'none';
+        $('conteudo').style.display = 'none';
+        $('erro').style.display = 'none';
+        const aviso = $('aviso-sem-id');
+        if (aviso) {
+          const base = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '') + '/';
+          const exemplo = base + 'SEU_NUMERO';
+          const elExemplo = $('exemplo-link');
+          if (elExemplo) elExemplo.textContent = exemplo;
+          aviso.style.display = 'block';
+        }
         return;
       }
 
@@ -442,9 +476,10 @@
       }
 
       const periodo = parseInt($('periodo').value, 10) || 30;
+      // Quando periodo é 0 = "Todo o período", não filtra por data (mostra todos os gastos)
       const dataInicio = new Date();
-      dataInicio.setDate(dataInicio.getDate() - periodo);
-      const dataInicioStr = dataInicio.toISOString().split('T')[0];
+      if (periodo > 0) dataInicio.setDate(dataInicio.getDate() - periodo);
+      const dataInicioStr = periodo > 0 ? dataInicio.toISOString().split('T')[0] : null;
 
       let gastos = [];
       let lembretes = [];
@@ -468,13 +503,22 @@
         const m = msg.toLowerCase();
         return m.includes('does not exist') || m.includes('could not find the table') || m.includes('schema cache');
       }
+      // Filtro por usuário: aceita um valor (eq) ou array para .or (ex.: número e número@s.whatsapp.net)
+      const celularFilter = userId.includes('@')
+        ? { eq: userId }
+        : { or: [userId, userId + '@s.whatsapp.net'] };
+
       async function buscarComTimeout(fromTable, fromTableMaiusculo, opts) {
         let q = clientSupabase.from(fromTable).select(opts.select || '*');
-        if (opts.gte) q = q.gte('data', opts.gte);
+        if (opts.celularEq) q = q.eq('celular', opts.celularEq);
+        if (opts.celularOr && opts.celularOr.length) q = q.or(opts.celularOr.map(v => 'celular.eq.' + v).join(','));
+        if (opts.gte) q = q.gte('data', opts.gte); // só aplica filtro de data quando há período
         if (opts.order) q = q.order(opts.order.col, { ascending: opts.order.asc });
         const res = await Promise.race([q, timeoutPromise(timeoutMs)]);
         if (res && res.error && res.error.message && tabelaNaoEncontrada(res.error.message)) {
           let q2 = clientSupabase.from(fromTableMaiusculo).select(opts.select || '*');
+          if (opts.celularEq) q2 = q2.eq('celular', opts.celularEq);
+          if (opts.celularOr && opts.celularOr.length) q2 = q2.or(opts.celularOr.map(v => 'celular.eq.' + v).join(','));
           if (opts.gte) q2 = q2.gte('data', opts.gte);
           if (opts.order) q2 = q2.order(opts.order.col, { ascending: opts.order.asc });
           const res2 = await Promise.race([q2, timeoutPromise(timeoutMs)]);
@@ -487,11 +531,14 @@
       }
 
       // No Supabase/PostgreSQL as tabelas costumam estar em minúsculas (gastos, lembretes)
+      const optsGastos = {
+        gte: dataInicioStr,
+        order: { col: 'data', asc: false }
+      };
+      if (celularFilter.eq) optsGastos.celularEq = celularFilter.eq;
+      else if (celularFilter.or) optsGastos.celularOr = celularFilter.or;
       try {
-        gastos = await buscarComTimeout('gastos', 'Gastos', {
-          gte: dataInicioStr,
-          order: { col: 'data', asc: false }
-        });
+        gastos = await buscarComTimeout('gastos', 'Gastos', optsGastos);
       } catch (e) {
         const msg = e.message === 'timeout'
           ? 'Demorou muito (timeout). Verifique a URL/chave do Supabase, a conexão e as políticas RLS (SELECT para anon).'
@@ -500,10 +547,11 @@
         return;
       }
 
+      const optsLembretes = { order: { col: 'data', asc: true } };
+      if (celularFilter.eq) optsLembretes.celularEq = celularFilter.eq;
+      else if (celularFilter.or) optsLembretes.celularOr = celularFilter.or;
       try {
-        lembretes = await buscarComTimeout('lembretes', 'Lembretes', {
-          order: { col: 'data', asc: true }
-        });
+        lembretes = await buscarComTimeout('lembretes', 'Lembretes', optsLembretes);
       } catch (e) {
         const msg = e.message === 'timeout'
           ? 'Demorou muito (timeout) ao buscar lembretes. Verifique políticas RLS (SELECT para anon).'
@@ -513,6 +561,8 @@
       }
 
       $('loading').style.display = 'none';
+      if ($('aviso-sem-id')) $('aviso-sem-id').style.display = 'none';
+      $('erro').style.display = 'none';
       $('conteudo').style.display = 'block';
 
       renderizarResumo(gastos, lembretes);
