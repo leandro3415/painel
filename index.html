@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FinLeve — Painel de Gastos e Lembretes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --azul-escuro: #0a1628;
+      --azul-medio: #0f2744;
+      --azul-claro: #1a4a7a;
+      --azul-destaque: #2d7dd2;
+      --azul-brilho: #4da3ff;
+      --preto: #050a12;
+      --branco: #f0f4f8;
+      --cinza-claro: #c5d4e8;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(165deg, var(--preto) 0%, var(--azul-escuro) 25%, var(--azul-medio) 50%, var(--azul-escuro) 75%, var(--preto) 100%);
+      background-attachment: fixed;
+      color: var(--branco);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 60vh;
+      background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(45, 125, 210, 0.25) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      padding: 1rem 0 1.5rem;
+      border-bottom: 1px solid rgba(77, 163, 255, 0.15);
+    }
+
+    .logo {
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--azul-brilho) 0%, var(--azul-destaque) 50%, var(--azul-claro) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .tagline { font-size: 0.9rem; color: var(--cinza-claro); opacity: 0.9; }
+
+    .filtro-periodo {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .filtro-periodo select {
+      background: rgba(15, 39, 68, 0.8);
+      border: 1px solid rgba(77, 163, 255, 0.25);
+      border-radius: 10px;
+      color: var(--branco);
+      padding: 0.5rem 1rem;
+      font-family: inherit;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .filtro-periodo select:focus { outline: none; border-color: var(--azul-brilho); }
+
+    .loading-msg {
+      text-align: center;
+      padding: 3rem;
+      color: var(--cinza-claro);
+      font-size: 1.1rem;
+    }
+
+    .erro-msg {
+      background: rgba(200, 80, 80, 0.2);
+      border: 1px solid rgba(200, 80, 80, 0.5);
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      color: #ffb3b3;
+      margin-bottom: 1.5rem;
+    }
+
+    /* Cards de resumo */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: linear-gradient(135deg, rgba(15, 39, 68, 0.6) 0%, rgba(10, 22, 40, 0.8) 100%);
+      border: 1px solid rgba(77, 163, 255, 0.15);
+      border-radius: 16px;
+      padding: 1.25rem;
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(77, 163, 255, 0.35);
+      box-shadow: 0 12px 32px rgba(45, 125, 210, 0.2);
+    }
+
+    .card-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--azul-destaque), var(--azul-claro));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .card-label {
+      font-size: 0.85rem;
+      color: var(--cinza-claro);
+      margin-bottom: 0.25rem;
+    }
+
+    .card-value {
+      font-size: 1.75rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--azul-brilho), var(--azul-destaque));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Grid de gráficos */
+    .grid-charts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .chart-box {
+      background: linear-gradient(135deg, rgba(15, 39, 68, 0.6) 0%, rgba(10, 22, 40, 0.8) 100%);
+      border: 1px solid rgba(77, 163, 255, 0.15);
+      border-radius: 16px;
+      padding: 1.5rem;
+      transition: border-color 0.2s;
+    }
+
+    .chart-box:hover { border-color: rgba(77, 163, 255, 0.3); }
+
+    .chart-box h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: var(--branco);
+    }
+
+    .chart-wrap {
+      position: relative;
+      height: 260px;
+    }
+
+    /* Tabelas / listas */
+    .section-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .tabela-box {
+      background: linear-gradient(135deg, rgba(15, 39, 68, 0.6) 0%, rgba(10, 22, 40, 0.8) 100%);
+      border: 1px solid rgba(77, 163, 255, 0.15);
+      border-radius: 16px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    th, td {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid rgba(77, 163, 255, 0.1);
+    }
+
+    th {
+      color: var(--cinza-claro);
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    tr:hover td { background: rgba(77, 163, 255, 0.06); }
+
+    .valor-positivo { color: #7dd3a0; font-weight: 600; }
+
+    .badge-pendente {
+      display: inline-block;
+      background: rgba(255, 180, 80, 0.25);
+      color: #ffc966;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+    }
+
+    .badge-notificado {
+      display: inline-block;
+      background: rgba(125, 211, 160, 0.25);
+      color: #7dd3a0;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 2rem;
+      color: var(--cinza-claro);
+      font-size: 0.95rem;
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem 0 1rem;
+      font-size: 0.85rem;
+      color: var(--cinza-claro);
+      opacity: 0.7;
+    }
+
+    @media (min-width: 768px) {
+      .container { padding: 2rem; }
+      .grid-charts { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <div class="logo">FinLeve</div>
+        <p class="tagline">Painel de Gastos e Lembretes</p>
+      </div>
+      <div class="filtro-periodo">
+        <label for="periodo">Período dos gastos:</label>
+        <select id="periodo">
+          <option value="30">Últimos 30 dias</option>
+          <option value="7">Últimos 7 dias</option>
+          <option value="90">Últimos 90 dias</option>
+        </select>
+      </div>
+    </header>
+
+    <div id="erro" class="erro-msg" style="display: none;"></div>
+    <div id="aviso-file" class="erro-msg" style="display: none;">
+      <strong>⚠️ Abrindo pelo arquivo (file://) não acessa o Supabase.</strong><br><br>
+      O navegador bloqueia requisições quando a página é aberta direto do disco. Para ver os dados:<br><br>
+      1. Abra um terminal na pasta <code>FinLeve-Dashboard</code><br>
+      2. Rode: <code>npx serve .</code> (ou use a extensão Live Server no VS Code)<br>
+      3. Acesse no navegador o endereço que aparecer (ex: <code>http://localhost:3000</code>)
+    </div>
+    <div id="loading" class="loading-msg">Carregando dados…</div>
+    <div id="conteudo" style="display: none;">
+      <section class="cards">
+        <div class="card">
+          <div class="card-icon">💰</div>
+          <div class="card-label">Total em gastos (período)</div>
+          <div class="card-value" id="total-gastos">R$ 0,00</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">📋</div>
+          <div class="card-label">Quantidade de gastos</div>
+          <div class="card-value" id="qtd-gastos">0</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">📅</div>
+          <div class="card-label">Lembretes totais</div>
+          <div class="card-value" id="total-lembretes">0</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">⏳</div>
+          <div class="card-label">Lembretes pendentes</div>
+          <div class="card-value" id="lembretes-pendentes">0</div>
+        </div>
+      </section>
+
+      <section class="grid-charts">
+        <div class="chart-box">
+          <h3>📊 Gastos por categoria</h3>
+          <div class="chart-wrap">
+            <canvas id="chart-categorias"></canvas>
+          </div>
+        </div>
+        <div class="chart-box">
+          <h3>📈 Gastos por mês</h3>
+          <div class="chart-wrap">
+            <canvas id="chart-meses"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid-charts">
+        <div class="chart-box">
+          <h3>🔔 Status dos lembretes</h3>
+          <div class="chart-wrap">
+            <canvas id="chart-lembretes"></canvas>
+          </div>
+        </div>
+        <div class="chart-box">
+          <h3>📅 Lembretes por mês</h3>
+          <div class="chart-wrap">
+            <canvas id="chart-lembretes-mes"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-title">💰 Últimos gastos</h2>
+        <div class="tabela-box">
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Descrição</th>
+                <th>Categoria</th>
+                <th>Valor</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-gastos"></tbody>
+          </table>
+          <div id="empty-gastos" class="empty-state" style="display: none;">Nenhum gasto no período.</div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-title">📅 Próximos lembretes</h2>
+        <div class="tabela-box">
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Hora</th>
+                <th>Título</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-lembretes"></tbody>
+          </table>
+          <div id="empty-lembretes" class="empty-state" style="display: none;">Nenhum lembrete cadastrado.</div>
+        </div>
+      </section>
+    </div>
+
+    <footer>FinLeve — Controle de gastos e lembretes.</footer>
+  </div>
+
+  <script>
+    // ========== CONFIGURAÇÃO: coloque sua URL e chave anônima do Supabase ==========
+    const SUPABASE_URL = 'https://vwjuhgkoptqqhndalhro.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3anVoZ2tvcHRxcWhuZGFsaHJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyOTY5NzEsImV4cCI6MjA4Mzg3Mjk3MX0.Tg-_h5kKgn85FEBw_JeqFLQnzOvekxuE158skVCsyOg';
+    // =================================================================================
+
+    const $ = (id) => document.getElementById(id);
+    let clientSupabase = null;
+    let chartCategorias = null;
+    let chartMeses = null;
+    let chartLembretes = null;
+    let chartLembretesMes = null;
+
+    function formatarMoeda(n) {
+      return 'R$ ' + Number(n).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+
+    function formatarData(s) {
+      if (!s) return '—';
+      const d = new Date(s);
+      return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
+    function mostrarErro(msg, detalhe) {
+      $('loading').style.display = 'none';
+      $('conteudo').style.display = 'none';
+      const el = $('erro');
+      el.innerHTML = msg + (detalhe ? '<br><br><small>' + detalhe + '</small>' : '');
+      el.style.display = 'block';
+      if (detalhe) console.error('FinLeve Supabase:', detalhe);
+    }
+
+    async function carregarDados() {
+      if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_URL === 'SUA_SUPABASE_URL' || SUPABASE_ANON_KEY === 'SUA_SUPABASE_ANON_KEY') {
+        mostrarErro('Configure SUPABASE_URL e SUPABASE_ANON_KEY no início do script (index.html).');
+        return;
+      }
+
+      try {
+        if (typeof window.supabase === 'undefined') {
+          throw new Error('Script do Supabase não carregou. Verifique a internet ou bloqueadores.');
+        }
+        clientSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      } catch (e) {
+        mostrarErro('Erro ao conectar ao Supabase: ' + e.message);
+        return;
+      }
+
+      const periodo = parseInt($('periodo').value, 10) || 30;
+      const dataInicio = new Date();
+      dataInicio.setDate(dataInicio.getDate() - periodo);
+      const dataInicioStr = dataInicio.toISOString().split('T')[0];
+
+      let gastos = [];
+      let lembretes = [];
+
+      // Teste rápido: primeiro select para ver resposta no console (F12)
+      try {
+        const testRes = await clientSupabase.from('gastos').select('*').limit(1);
+        console.log('FinLeve – teste gastos:', testRes.error ? { error: testRes.error.message, code: testRes.error.code } : { ok: true, count: (testRes.data && testRes.data.length) });
+      } catch (e) {
+        console.warn('FinLeve – teste gastos falhou:', e);
+      }
+
+      // Timeout para não ficar travado em "Carregando dados..."
+      const timeoutMs = 20000;
+      const timeoutPromise = (ms) => new Promise((_, rej) =>
+        setTimeout(() => rej(new Error('timeout')), ms));
+
+      // Função auxiliar: busca com timeout e fallback de nome de tabela
+      function tabelaNaoEncontrada(msg) {
+        if (!msg) return false;
+        const m = msg.toLowerCase();
+        return m.includes('does not exist') || m.includes('could not find the table') || m.includes('schema cache');
+      }
+      async function buscarComTimeout(fromTable, fromTableMaiusculo, opts) {
+        let q = clientSupabase.from(fromTable).select(opts.select || '*');
+        if (opts.gte) q = q.gte('data', opts.gte);
+        if (opts.order) q = q.order(opts.order.col, { ascending: opts.order.asc });
+        const res = await Promise.race([q, timeoutPromise(timeoutMs)]);
+        if (res && res.error && res.error.message && tabelaNaoEncontrada(res.error.message)) {
+          let q2 = clientSupabase.from(fromTableMaiusculo).select(opts.select || '*');
+          if (opts.gte) q2 = q2.gte('data', opts.gte);
+          if (opts.order) q2 = q2.order(opts.order.col, { ascending: opts.order.asc });
+          const res2 = await Promise.race([q2, timeoutPromise(timeoutMs)]);
+          if (res2 && res2.error) throw new Error(res2.error.message);
+          return (res2 && res2.data) ? res2.data : [];
+        }
+        if (res && res.error) throw new Error(res.error.message);
+        if (res && Array.isArray(res)) return res; // timeout retorna rejeição, não resultado
+        return (res && res.data) ? res.data : [];
+      }
+
+      // No Supabase/PostgreSQL as tabelas costumam estar em minúsculas (gastos, lembretes)
+      try {
+        gastos = await buscarComTimeout('gastos', 'Gastos', {
+          gte: dataInicioStr,
+          order: { col: 'data', asc: false }
+        });
+      } catch (e) {
+        const msg = e.message === 'timeout'
+          ? 'Demorou muito (timeout). Verifique a URL/chave do Supabase, a conexão e as políticas RLS (SELECT para anon).'
+          : ('Erro ao carregar gastos: ' + e.message);
+        mostrarErro(msg, 'Abra F12 → Console para o erro completo. Verifique: nome da tabela (gastos ou Gastos), políticas RLS (SELECT para anon).');
+        return;
+      }
+
+      try {
+        lembretes = await buscarComTimeout('lembretes', 'Lembretes', {
+          order: { col: 'data', asc: true }
+        });
+      } catch (e) {
+        const msg = e.message === 'timeout'
+          ? 'Demorou muito (timeout) ao buscar lembretes. Verifique políticas RLS (SELECT para anon).'
+          : ('Erro ao carregar lembretes: ' + e.message);
+        mostrarErro(msg, 'Abra F12 → Console para o erro completo. Verifique: nome da tabela (lembretes ou Lembretes), políticas RLS (SELECT para anon).');
+        return;
+      }
+
+      $('loading').style.display = 'none';
+      $('conteudo').style.display = 'block';
+
+      renderizarResumo(gastos, lembretes);
+      renderizarGraficos(gastos, lembretes);
+      renderizarTabelas(gastos, lembretes);
+    }
+
+    function renderizarResumo(gastos, lembretes) {
+      const total = gastos.reduce((s, g) => s + (Number(g.valor_total) || 0), 0);
+      $('total-gastos').textContent = formatarMoeda(total);
+      $('qtd-gastos').textContent = gastos.length;
+      $('total-lembretes').textContent = lembretes.length;
+      const pendentes = lembretes.filter(l => !l.notificado).length;
+      $('lembretes-pendentes').textContent = pendentes;
+    }
+
+    const coresGrafico = [
+      '#4da3ff', '#2d7dd2', '#1a4a7a', '#5bb8e8', '#7dd3a0', '#ffc966', '#e88b8b', '#b88be8'
+    ];
+
+    function renderizarGraficos(gastos, lembretes) {
+      const opts = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            labels: { color: '#c5d4e8', font: { family: 'Plus Jakarta Sans' } }
+          }
+        },
+        scales: {
+          x: { ticks: { color: '#c5d4e8' }, grid: { color: 'rgba(77,163,255,0.1)' } },
+          y: { ticks: { color: '#c5d4e8' }, grid: { color: 'rgba(77,163,255,0.1)' } }
+        }
+      };
+
+      const porCategoria = {};
+      gastos.forEach(g => {
+        const c = (g.categoria || 'Outros').trim();
+        porCategoria[c] = (porCategoria[c] || 0) + (Number(g.valor_total) || 0);
+      });
+      const labelsCat = Object.keys(porCategoria);
+      const valuesCat = labelsCat.map(c => porCategoria[c]);
+
+      if (chartCategorias) chartCategorias.destroy();
+      chartCategorias = new Chart($('chart-categorias'), {
+        type: 'doughnut',
+        data: {
+          labels: labelsCat.length ? labelsCat : ['Nenhum gasto'],
+          datasets: [{
+            data: valuesCat.length ? valuesCat : [1],
+            backgroundColor: coresGrafico.slice(0, Math.max(labelsCat.length, 1)),
+            borderWidth: 0
+          }]
+        },
+        options: { ...opts }
+      });
+
+      const porMes = {};
+      gastos.forEach(g => {
+        const d = (g.data || '').toString().slice(0, 7);
+        if (d) porMes[d] = (porMes[d] || 0) + (Number(g.valor_total) || 0);
+      });
+      const mesesOrdenados = Object.keys(porMes).sort();
+      const labelsMes = mesesOrdenados.map(m => {
+        const [y, mm] = m.split('-');
+        const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        return meses[parseInt(mm, 10) - 1] + '/' + y.slice(2);
+      });
+      const valuesMes = mesesOrdenados.map(m => porMes[m]);
+
+      if (chartMeses) chartMeses.destroy();
+      chartMeses = new Chart($('chart-meses'), {
+        type: 'bar',
+        data: {
+          labels: labelsMes.length ? labelsMes : ['—'],
+          datasets: [{
+            label: 'Total (R$)',
+            data: valuesMes.length ? valuesMes : [0],
+            backgroundColor: 'rgba(45, 125, 210, 0.7)',
+            borderColor: '#4da3ff',
+            borderWidth: 1
+          }]
+        },
+        options: { ...opts }
+      });
+
+      const pend = lembretes.filter(l => !l.notificado).length;
+      const notif = lembretes.length - pend;
+      if (chartLembretes) chartLembretes.destroy();
+      chartLembretes = new Chart($('chart-lembretes'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Pendentes', 'Notificados'],
+          datasets: [{
+            data: [pend, notif],
+            backgroundColor: ['#ffc966', '#7dd3a0'],
+            borderWidth: 0
+          }]
+        },
+        options: { ...opts }
+      });
+
+      const lembPorMes = {};
+      lembretes.forEach(l => {
+        const d = (l.data || '').toString().slice(0, 7);
+        if (d) lembPorMes[d] = (lembPorMes[d] || 0) + 1;
+      });
+      const lmOrdenados = Object.keys(lembPorMes).sort();
+      const labelsLm = lmOrdenados.map(m => {
+        const [y, mm] = m.split('-');
+        const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        return meses[parseInt(mm, 10) - 1] + '/' + y.slice(2);
+      });
+      const valuesLm = lmOrdenados.map(m => lembPorMes[m]);
+
+      if (chartLembretesMes) chartLembretesMes.destroy();
+      chartLembretesMes = new Chart($('chart-lembretes-mes'), {
+        type: 'bar',
+        data: {
+          labels: labelsLm.length ? labelsLm : ['—'],
+          datasets: [{
+            label: 'Lembretes',
+            data: valuesLm.length ? valuesLm : [0],
+            backgroundColor: 'rgba(125, 211, 160, 0.6)',
+            borderColor: '#7dd3a0',
+            borderWidth: 1
+          }]
+        },
+        options: { ...opts }
+      });
+    }
+
+    function renderizarTabelas(gastos, lembretes) {
+      const tbodyG = $('tbody-gastos');
+      const emptyG = $('empty-gastos');
+      tbodyG.innerHTML = '';
+      if (!gastos.length) {
+        emptyG.style.display = 'block';
+      } else {
+        emptyG.style.display = 'none';
+        gastos.slice(0, 20).forEach(g => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${formatarData(g.data)}</td>
+            <td>${(g.descricao || '—').toString().slice(0, 40)}</td>
+            <td>${(g.categoria || 'Outros')}</td>
+            <td class="valor-positivo">${formatarMoeda(g.valor_total)}</td>
+          `;
+          tbodyG.appendChild(tr);
+        });
+      }
+
+      const tbodyL = $('tbody-lembretes');
+      const emptyL = $('empty-lembretes');
+      tbodyL.innerHTML = '';
+      if (!lembretes.length) {
+        emptyL.style.display = 'block';
+      } else {
+        emptyL.style.display = 'none';
+        lembretes.slice(0, 15).forEach(l => {
+          const tr = document.createElement('tr');
+          const status = l.notificado
+            ? '<span class="badge-notificado">Notificado</span>'
+            : '<span class="badge-pendente">Pendente</span>';
+          tr.innerHTML = `
+            <td>${formatarData(l.data)}</td>
+            <td>${(l.hora || '—').toString().slice(0, 5)}</td>
+            <td>${(l.titulo || '—').toString().slice(0, 50)}</td>
+            <td>${status}</td>
+          `;
+          tbodyL.appendChild(tr);
+        });
+      }
+    }
+
+    $('periodo').addEventListener('change', carregarDados);
+
+    // Se estiver abrindo por file://, o navegador bloqueia acesso ao Supabase (CORS). Mostrar aviso.
+    if (window.location.protocol === 'file:') {
+      $('loading').style.display = 'none';
+      $('aviso-file').style.display = 'block';
+      $('aviso-file').classList.remove('erro-msg');
+      $('aviso-file').style.background = 'linear-gradient(135deg, rgba(15, 39, 68, 0.8), rgba(26, 74, 122, 0.4))';
+      $('aviso-file').style.borderColor = 'rgba(77, 163, 255, 0.4)';
+      $('aviso-file').style.color = '#c5d4e8';
+    } else {
+      carregarDados();
+    }
+  </script>
+</body>
+</html>
