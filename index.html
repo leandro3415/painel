@@ -1150,7 +1150,7 @@
             <td>${(l.hora || '—').toString().slice(0, 5)}</td>
             <td>${(l.titulo || '—').toString().slice(0, 50)}</td>
             <td>${status}</td>
-            <td><button type="button" class="btn-apagar" data-lembrete-id="' + (l.id || '') + '">Apagar</button></td>
+            <td><button type="button" class="btn-apagar" data-lembrete-id="${l.id || ''}">Apagar</button></td>
           `;
           tbodyL.appendChild(tr);
           tr.querySelector('.btn-apagar').addEventListener('click', function() {
