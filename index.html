@@ -730,7 +730,7 @@
         if (typeof window.supabase === 'undefined') {
           throw new Error('Script do Supabase não carregou. Verifique a internet ou bloqueadores.');
         }
-        clientSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        if (!clientSupabase) clientSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       } catch (e) {
         mostrarErro('Erro ao conectar ao Supabase: ' + e.message);
         return;
@@ -827,7 +827,7 @@
         let lista = [];
         const visto = new Set();
 
-        for (const nomeTabela of ['Gastos', 'gastos']) {
+        for (const nomeTabela of ['Gastos']) {
           const r = await buscarDeUmaTabela(nomeTabela);
           if (r.error && lista.length === 0 && tabelaNaoEncontrada(r.error)) continue;
           if (r.error && lista.length > 0) continue;
@@ -866,7 +866,7 @@
 
       const optsLembretes = { order: { col: 'data', asc: true }, celularIn: celularValores };
       try {
-        lembretes = await buscarComTimeout('lembretes', 'Lembretes', optsLembretes);
+        lembretes = await buscarComTimeout('Lembretes', 'lembretes', optsLembretes);
       } catch (e) {
         const msg = e.message === 'timeout'
           ? 'Demorou muito (timeout) ao buscar lembretes. Verifique políticas RLS (SELECT para anon).'
@@ -923,7 +923,7 @@
       };
       const hoje = new Date().toISOString().split('T')[0];
       if (resumoRow && resumoRow.id) {
-        for (const tbl of ['Gastos', 'gastos']) {
+        for (const tbl of ['Gastos']) {
           let r = await client.from(tbl).update(payloadSpace).eq('id', resumoRow.id).select();
           if (r && r.error && (r.error.message || '').toLowerCase().includes('column')) {
             r = await client.from(tbl).update(payloadSnake).eq('id', resumoRow.id).select();
@@ -949,7 +949,7 @@
           pago: false,
           ...payloadSnake
         };
-        for (const tbl of ['Gastos', 'gastos']) {
+        for (const tbl of ['Gastos']) {
           let r = await client.from(tbl).insert(insertRowSpace).select();
           if (r && r.error && (r.error.message || '').toLowerCase().includes('column')) {
             r = await client.from(tbl).insert(insertRowSnake).select();
@@ -1150,7 +1150,7 @@
     async function marcarComoPago(gastoId, valor, tabelaNome) {
       if (!gastoId || !clientSupabase || !window._userId) return;
       try {
-        for (const tbl of [tabelaNome, tabelaNome === 'Gastos' ? 'gastos' : 'Gastos']) {
+        for (const tbl of ['Gastos']) {
           const r = await clientSupabase.from(tbl).update({ pago: true }).eq('id', gastoId).select();
           if (r && !r.error && r.data && r.data.length) break;
         }
@@ -1158,7 +1158,7 @@
         const celularPerfil = userId.includes('@') ? [userId] : [userId, userId + '@s.whatsapp.net'];
         // Atualizar saldo na linha de resumo da tabela Gastos (não existe tabela Perfil)
         let resumoRow = null;
-        for (const tbl of ['Gastos', 'gastos']) {
+        for (const tbl of ['Gastos']) {
           const r = await clientSupabase.from(tbl).select('*').eq('descricao', DESC_RESUMO_GASTOS).in('celular', celularPerfil).limit(5);
           if (r && !r.error && r.data && r.data.length) {
             resumoRow = r.data.find(x => soDigitos((x.celular || x.Celular) || '') === soDigitos(userId)) || r.data[0];
@@ -1193,7 +1193,7 @@
       if (!confirm('Apagar este lembrete? Ele será removido do banco de dados.')) return;
       try {
         let ok = false;
-        for (const tbl of ['Lembretes', 'lembretes']) {
+        for (const tbl of ['Lembretes']) {
           const r = await clientSupabase.from(tbl).delete().eq('id', lembreteId);
           if (r && !r.error) { ok = true; break; }
         }
@@ -1242,7 +1242,7 @@
       try {
         // Saldo fica na tabela Gastos (linha de resumo). Não existe tabela Perfil.
         let resumoRow = null;
-        for (const tbl of ['Gastos', 'gastos']) {
+        for (const tbl of ['Gastos']) {
           const r = await clientSupabase.from(tbl).select('*').eq('descricao', DESC_RESUMO_GASTOS).in('celular', celularPerfil).limit(1);
           if (r && !r.error && r.data && r.data.length) {
             resumoRow = r.data.find(x => soDigitos((x.celular || x.Celular) || '') === soDigitos(userId)) || r.data[0];
@@ -1278,7 +1278,7 @@
             { Celular: userId, Data: hoje, Descricao: DESC_RESUMO_GASTOS, Valor_total: 0, 'SALDO DISPONÍVEL': String(novoSaldo) },
             { celular: userId, data: hoje, descricao: DESC_RESUMO_GASTOS, valor_total: 0 }
           ];
-          for (const tbl of ['Gastos', 'gastos']) {
+          for (const tbl of ['Gastos']) {
             for (let i = 0; i < variantesInsert.length; i++) {
               let row = variantesInsert[i];
               if (i === 4) row = { ...row, 'SALDO DISPONÍVEL': String(novoSaldo) };
