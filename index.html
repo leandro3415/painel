@@ -108,6 +108,7 @@
       margin-bottom: 1.5rem;
     }
 
+    /* Cards de resumo */
     .cards {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -195,6 +196,7 @@
     }
     .btn-apagar:hover { background: rgba(200, 80, 80, 0.7); }
 
+    /* Grid de gráficos */
     .grid-charts {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -224,6 +226,7 @@
       height: 260px;
     }
 
+    /* Tabelas / listas */
     .section-title {
       font-size: 1.2rem;
       font-weight: 700;
@@ -303,6 +306,186 @@
       opacity: 0.7;
     }
 
+    /* Botão adicionar saldo */
+    .card-saldo-wrap {
+      position: relative;
+    }
+    .btn-adicionar-saldo {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-top: 0.5rem;
+      padding: 0.5rem 0.85rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      background: rgba(125, 211, 160, 0.25);
+      color: #7dd3a0;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .btn-adicionar-saldo:hover {
+      background: rgba(125, 211, 160, 0.4);
+    }
+    .btn-adicionar-saldo:active {
+      transform: scale(0.98);
+    }
+
+    /* Modal adicionar saldo */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 10, 18, 0.85);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .modal-overlay.ativo {
+      display: flex;
+    }
+    .modal-saldo {
+      background: linear-gradient(135deg, rgba(15, 39, 68, 0.95) 0%, rgba(10, 22, 40, 0.98) 100%);
+      border: 1px solid rgba(77, 163, 255, 0.3);
+      border-radius: 16px;
+      padding: 1.5rem;
+      max-width: 360px;
+      width: 100%;
+    }
+    .modal-saldo h3 {
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+      color: var(--branco);
+    }
+    .modal-saldo label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--cinza-claro);
+      margin-bottom: 0.35rem;
+    }
+    .modal-saldo input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      border: 1px solid rgba(77, 163, 255, 0.3);
+      background: rgba(5, 10, 18, 0.6);
+      color: var(--branco);
+      font-size: 1.1rem;
+      font-family: inherit;
+      margin-bottom: 1rem;
+      box-sizing: border-box;
+    }
+    .modal-saldo input::placeholder {
+      color: var(--cinza-claro);
+      opacity: 0.7;
+    }
+    .modal-saldo input:focus {
+      outline: none;
+      border-color: var(--azul-brilho);
+    }
+    .modal-botoes {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+    .modal-botoes button {
+      flex: 1;
+      padding: 0.65rem 1rem;
+      border-radius: 10px;
+      border: none;
+      font-family: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .btn-modal-confirmar {
+      background: linear-gradient(135deg, var(--azul-destaque), var(--azul-claro));
+      color: var(--branco);
+    }
+    .btn-modal-cancelar {
+      background: rgba(255,255,255,0.1);
+      color: var(--cinza-claro);
+    }
+
+    /* Responsivo mobile */
+    @media (max-width: 767px) {
+      .container { padding: 0.75rem 1rem; }
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 0.75rem 0 1rem;
+      }
+      .logo { font-size: 1.5rem; }
+      .tagline { font-size: 0.8rem; }
+      .filtro-periodo { width: 100%; }
+      .filtro-periodo select {
+        flex: 1;
+        min-width: 0;
+        padding: 0.6rem 0.75rem;
+      }
+      .cards {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+      }
+      .card {
+        padding: 1rem;
+      }
+      .card-value { font-size: 1.4rem; }
+      .card-label { font-size: 0.8rem; }
+      .card-desc { font-size: 0.65rem; }
+      .grid-charts {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+      .chart-box { padding: 1rem; }
+      .chart-wrap { height: 220px; }
+      .chart-box h3 { font-size: 0.95rem; }
+      .section-title { font-size: 1.05rem; margin-bottom: 0.75rem; }
+      .tabela-box {
+        padding: 0.75rem;
+        margin-bottom: 1rem;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .tabela-box table {
+        min-width: 580px;
+        font-size: 0.85rem;
+      }
+      .tabela-box th,
+      .tabela-box td {
+        padding: 0.6rem 0.5rem;
+        white-space: nowrap;
+      }
+      .tabela-box th:nth-child(1),
+      .tabela-box td:nth-child(1) { min-width: 72px; }
+      .tabela-box th:nth-child(2),
+      .tabela-box td:nth-child(2) { min-width: 90px; }
+      .tabela-box th:nth-child(3),
+      .tabela-box td:nth-child(3) { min-width: 70px; }
+      .tabela-box th:nth-child(4),
+      .tabela-box td:nth-child(4) { min-width: 72px; }
+      .tabela-box th:nth-child(5),
+      .tabela-box td:nth-child(5) { min-width: 70px; }
+      .tabela-box th:nth-child(6),
+      .tabela-box td:nth-child(6) { min-width: 120px; }
+      .btn-pago, .btn-apagar {
+        min-height: 44px;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.75rem;
+      }
+      .btn-adicionar-saldo {
+        min-height: 44px;
+        padding: 0.6rem 1rem;
+      }
+      .modal-saldo { padding: 1.25rem; }
+      .modal-botoes button { min-height: 44px; }
+    }
+
     @media (min-width: 768px) {
       .container { padding: 2rem; }
       .grid-charts { grid-template-columns: 1fr 1fr; }
@@ -354,11 +537,12 @@
           <div class="card-label">Quantidade de gastos</div>
           <div class="card-value" id="qtd-gastos">0</div>
         </div>
-        <div class="card">
+        <div class="card card-saldo-wrap">
           <div class="card-icon">💵</div>
           <div class="card-label">Saldo disponível</div>
           <div class="card-value" id="saldo-disponivel">R$ 0,00</div>
           <div class="card-desc">Ao marcar gasto como pago, o valor é descontado daqui.</div>
+          <button type="button" class="btn-adicionar-saldo" id="btn-adicionar-saldo" aria-label="Adicionar saldo">➕ Adicionar saldo</button>
         </div>
         <div class="card">
           <div class="card-icon">✅</div>
@@ -457,9 +641,24 @@
     <footer>FinLeve — Controle de gastos e lembretes.</footer>
   </div>
 
+  <!-- Modal Adicionar saldo -->
+  <div id="modal-saldo-overlay" class="modal-overlay" role="dialog" aria-labelledby="modal-saldo-titulo" aria-modal="true">
+    <div class="modal-saldo">
+      <h3 id="modal-saldo-titulo">Adicionar saldo disponível</h3>
+      <label for="input-valor-saldo">Valor a adicionar (R$)</label>
+      <input type="text" id="input-valor-saldo" inputmode="decimal" placeholder="Ex: 100,00" autocomplete="off">
+      <div class="modal-botoes">
+        <button type="button" class="btn-modal-cancelar" id="btn-modal-saldo-cancelar">Cancelar</button>
+        <button type="button" class="btn-modal-confirmar" id="btn-modal-saldo-confirmar">Adicionar</button>
+      </div>
+    </div>
+  </div>
+
   <script>
+    // ========== CONFIGURAÇÃO: coloque sua URL e chave anônima do Supabase ==========
     const SUPABASE_URL = 'https://vwjuhgkoptqqhndalhro.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3anVoZ2tvcHRxcWhuZGFsaHJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyOTY5NzEsImV4cCI6MjA4Mzg3Mjk3MX0.Tg-_h5kKgn85FEBw_JeqFLQnzOvekxuE158skVCsyOg';
+    // =================================================================================
 
     const $ = (id) => document.getElementById(id);
     let clientSupabase = null;
@@ -488,6 +687,7 @@
       if (detalhe) console.error('FinLeve Supabase:', detalhe);
     }
 
+    // Lê o ID do usuário (celular/numero) da URL: /painel/558897849022 ou ?id=558897849022
     function getIdFromUrl() {
       const path = window.location.pathname.replace(/\/$/, '');
       const partes = path.split('/');
@@ -530,6 +730,7 @@
       }
 
       const periodo = parseInt($('periodo').value, 10) || 30;
+      // Quando periodo é 0 = "Todo o período", não filtra por data (mostra todos os gastos)
       const dataInicio = new Date();
       if (periodo > 0) dataInicio.setDate(dataInicio.getDate() - periodo);
       const dataInicioStr = periodo > 0 ? dataInicio.toISOString().split('T')[0] : null;
@@ -538,16 +739,26 @@
       let lembretes = [];
       let perfil = { saldo_disponivel: 0 };
 
+      // Teste rápido: primeiro select para ver resposta no console (F12)
+      try {
+        const testRes = await clientSupabase.from('gastos').select('*').limit(1);
+        console.log('FinLeve – teste gastos:', testRes.error ? { error: testRes.error.message, code: testRes.error.code } : { ok: true, count: (testRes.data && testRes.data.length) });
+      } catch (e) {
+        console.warn('FinLeve – teste gastos falhou:', e);
+      }
+
+      // Timeout para não ficar travado em "Carregando dados..."
       const timeoutMs = 20000;
       const timeoutPromise = (ms) => new Promise((_, rej) =>
         setTimeout(() => rej(new Error('timeout')), ms));
 
+      // Função auxiliar: busca com timeout e fallback de nome de tabela
       function tabelaNaoEncontrada(msg) {
         if (!msg) return false;
         const m = msg.toLowerCase();
         return m.includes('does not exist') || m.includes('could not find the table') || m.includes('schema cache');
       }
-
+      // Filtro por usuário: valores possíveis do celular (número e número@s.whatsapp.net)
       const celularValores = userId.includes('@')
         ? [userId]
         : [userId, userId + '@s.whatsapp.net'];
@@ -572,11 +783,13 @@
         return (res && res.data) ? res.data : [];
       }
 
+      // Extrai só os dígitos do número (ignora @s.whatsapp.net, espaços, etc.)
       function soDigitos(s) {
         if (s == null) return '';
         return String(s).replace(/\D/g, '');
       }
 
+      // Gastos: busca em AMBAS as tabelas (gastos e Gastos) e junta, removendo duplicatas (n8n usa "Gastos")
       async function buscarDeUmaTabela(nomeTabela) {
         let q = clientSupabase.from(nomeTabela).select('*');
         if (dataInicioStr) q = q.gte('data', dataInicioStr);
@@ -623,6 +836,7 @@
         }
 
         const filtrados = lista.filter(ehDoUsuario);
+        console.log('FinLeve – gastos: total da API =', lista.length, ', após filtro do usuário =', filtrados.length);
         if (dataInicioStr) {
           return filtrados.filter((g) => String(g.data || '') >= dataInicioStr).sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')));
         }
@@ -635,7 +849,7 @@
         const msg = e.message === 'timeout'
           ? 'Demorou muito (timeout). Verifique a URL/chave do Supabase, a conexão e as políticas RLS (SELECT para anon).'
           : ('Erro ao carregar gastos: ' + e.message);
-        mostrarErro(msg, 'Abra F12 → Console para o erro completo.');
+        mostrarErro(msg, 'Abra F12 → Console para o erro completo. Verifique: nome da tabela (gastos ou Gastos), políticas RLS (SELECT para anon).');
         return;
       }
 
@@ -644,12 +858,13 @@
         lembretes = await buscarComTimeout('lembretes', 'Lembretes', optsLembretes);
       } catch (e) {
         const msg = e.message === 'timeout'
-          ? 'Demorou muito (timeout) ao buscar lembretes.'
+          ? 'Demorou muito (timeout) ao buscar lembretes. Verifique políticas RLS (SELECT para anon).'
           : ('Erro ao carregar lembretes: ' + e.message);
-        mostrarErro(msg, 'Abra F12 → Console para o erro completo.');
+        mostrarErro(msg, 'Abra F12 → Console para o erro completo. Verifique: nome da tabela (lembretes ou Lembretes), políticas RLS (SELECT para anon).');
         return;
       }
 
+      // Perfil (saldo disponível): tenta tabelas "Perfil" e "perfil"
       const celularPerfil = userId.includes('@') ? [userId] : [userId, userId + '@s.whatsapp.net'];
       for (const tbl of ['Perfil', 'perfil']) {
         try {
@@ -919,6 +1134,84 @@
 
     $('periodo').addEventListener('change', carregarDados);
 
+    // Modal Adicionar saldo
+    function abrirModalSaldo() {
+      const el = $('modal-saldo-overlay');
+      const input = $('input-valor-saldo');
+      if (el && input) {
+        input.value = '';
+        el.classList.add('ativo');
+        input.focus();
+      }
+    }
+    function fecharModalSaldo() {
+      const el = $('modal-saldo-overlay');
+      if (el) el.classList.remove('ativo');
+    }
+    function parseValorSaldo(s) {
+      if (s == null || String(s).trim() === '') return NaN;
+      const limpo = String(s).trim().replace(/\./g, '').replace(',', '.');
+      return parseFloat(limpo);
+    }
+    async function adicionarSaldo() {
+      const input = $('input-valor-saldo');
+      const valor = input ? parseValorSaldo(input.value) : NaN;
+      if (isNaN(valor) || valor <= 0) {
+        alert('Digite um valor válido (ex: 100 ou 100,00).');
+        return;
+      }
+      if (!clientSupabase || !window._userId) {
+        alert('Sessão inválida. Recarregue a página com seu link pessoal.');
+        return;
+      }
+      try {
+        const userId = window._userId;
+        const celularPerfil = userId.includes('@') ? [userId] : [userId, userId + '@s.whatsapp.net'];
+        let perfilRow = null;
+        let tblPerfil = 'Perfil';
+        for (const tbl of ['Perfil', 'perfil']) {
+          const r = await clientSupabase.from(tbl).select('*').in('celular', celularPerfil);
+          if (r && !r.error && r.data && r.data.length) {
+            perfilRow = r.data.find(x => soDigitos(x.celular) === soDigitos(userId)) || r.data[0];
+            tblPerfil = tbl;
+            break;
+          }
+        }
+        const saldoAtual = perfilRow ? Number(perfilRow.saldo_disponivel) || 0 : 0;
+        const novoSaldo = saldoAtual + valor;
+        if (perfilRow && perfilRow.id) {
+          await clientSupabase.from(tblPerfil).update({ saldo_disponivel: novoSaldo }).eq('id', perfilRow.id);
+        } else {
+          await clientSupabase.from(tblPerfil).insert({ celular: userId, saldo_disponivel: novoSaldo });
+        }
+        fecharModalSaldo();
+        carregarDados();
+      } catch (e) {
+        console.error('Erro ao adicionar saldo:', e);
+        alert('Erro ao adicionar saldo. Verifique o console (F12).');
+      }
+    }
+    function soDigitos(s) {
+      if (s == null) return '';
+      return String(s).replace(/\D/g, '');
+    }
+
+    if ($('btn-adicionar-saldo')) $('btn-adicionar-saldo').addEventListener('click', abrirModalSaldo);
+    if ($('btn-modal-saldo-cancelar')) $('btn-modal-saldo-cancelar').addEventListener('click', fecharModalSaldo);
+    if ($('modal-saldo-overlay')) {
+      $('modal-saldo-overlay').addEventListener('click', function(ev) {
+        if (ev.target === this) fecharModalSaldo();
+      });
+    }
+    if ($('btn-modal-saldo-confirmar')) $('btn-modal-saldo-confirmar').addEventListener('click', adicionarSaldo);
+    if ($('input-valor-saldo')) {
+      $('input-valor-saldo').addEventListener('keydown', function(ev) {
+        if (ev.key === 'Enter') adicionarSaldo();
+        if (ev.key === 'Escape') fecharModalSaldo();
+      });
+    }
+
+    // Se estiver abrindo por file://, o navegador bloqueia acesso ao Supabase (CORS). Mostrar aviso.
     if (window.location.protocol === 'file:') {
       $('loading').style.display = 'none';
       $('aviso-file').style.display = 'block';
