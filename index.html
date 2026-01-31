@@ -748,7 +748,7 @@
 
       // Teste rápido: primeiro select para ver resposta no console (F12)
       try {
-        const testRes = await clientSupabase.from('gastos').select('*').limit(1);
+        const testRes = await clientSupabase.from('Gastos').select('*').limit(1);
         console.log('FinLeve – teste gastos:', testRes.error ? { error: testRes.error.message, code: testRes.error.code } : { ok: true, count: (testRes.data && testRes.data.length) });
       } catch (e) {
         console.warn('FinLeve – teste gastos falhou:', e);
