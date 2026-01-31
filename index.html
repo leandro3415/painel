@@ -885,8 +885,8 @@
       window._userId = userId;
 
       // Calcular gastos pagos e pendentes e salvar na tabela Gastos (linha de resumo)
-      const gastosPagosVal = gastos.filter(g => g.pago === true).reduce((s, g) => s + valorGasto(g), 0);
-      const gastosPendVal = gastos.filter(g => !g.pago).reduce((s, g) => s + valorGasto(g), 0);
+      const gastosPagosVal = gastos.filter(g => isPago(g)).reduce((s, g) => s + valorGasto(g), 0);
+      const gastosPendVal = gastos.filter(g => !isPago(g)).reduce((s, g) => s + valorGasto(g), 0);
       const saldoParaSalvar = (perfil && perfil.saldo_disponivel != null) ? Number(perfil.saldo_disponivel) : 0;
       try {
         await salvarResumoGastos(clientSupabase, userId, celularPerfil, resumoRow, saldoParaSalvar, gastosPagosVal, gastosPendVal);
@@ -936,7 +936,6 @@
           data: hoje,
           descricao: DESC_RESUMO_GASTOS,
           valor_total: 0,
-          pago: false,
           'SALDO DISPONÍVEL': String(saldo),
           'GASTOS PAGOS': String(gastosPagos),
           'GASTOS PENDENTES': String(gastosPendentes)
@@ -946,7 +945,6 @@
           data: hoje,
           descricao: DESC_RESUMO_GASTOS,
           valor_total: 0,
-          pago: false,
           ...payloadSnake
         };
         for (const tbl of ['Gastos']) {
@@ -965,8 +963,8 @@
       $('qtd-gastos').textContent = gastos.length;
       const saldo = (perfil && perfil.saldo_disponivel != null) ? Number(perfil.saldo_disponivel) : 0;
       $('saldo-disponivel').textContent = formatarMoeda(saldo);
-      const gastosPagos = gastos.filter(g => g.pago === true).reduce((s, g) => s + valorGasto(g), 0);
-      const gastosPend = gastos.filter(g => !g.pago).reduce((s, g) => s + valorGasto(g), 0);
+      const gastosPagos = gastos.filter(g => isPago(g)).reduce((s, g) => s + valorGasto(g), 0);
+      const gastosPend = gastos.filter(g => !isPago(g)).reduce((s, g) => s + valorGasto(g), 0);
       $('gastos-pagos').textContent = formatarMoeda(gastosPagos);
       $('gastos-pendentes').textContent = formatarMoeda(gastosPend);
       $('total-lembretes').textContent = lembretes.length;
@@ -1100,7 +1098,7 @@
         emptyG.style.display = 'none';
         gastos.slice(0, 20).forEach(g => {
           const tr = document.createElement('tr');
-          const pago = g.pago === true;
+          const pago = isPago(g);
           const statusBadge = pago ? '<span class="badge-pago">Pago</span>' : '<span class="badge-pendente">Pendente</span>';
           const btn = pago ? '' : '<button type="button" class="btn-pago" data-gasto-id="' + (g.id || '') + '" data-gasto-valor="' + valorGasto(g) + '" data-gasto-tabela="Gastos">Marcar como pago</button>';
           tr.innerHTML = `
@@ -1151,7 +1149,10 @@
       if (!gastoId || !clientSupabase || !window._userId) return;
       try {
         for (const tbl of ['Gastos']) {
-          const r = await clientSupabase.from(tbl).update({ pago: true }).eq('id', gastoId).select();
+          let r = await clientSupabase.from(tbl).update({ pago: true }).eq('id', gastoId).select();
+          if (r && r.error && (r.error.code === 'PGRST204' || (r.error.message || '').toLowerCase().includes("'pago'")) ) {
+            r = await clientSupabase.from(tbl).update({ 'Pago': true }).eq('id', gastoId).select();
+          }
           if (r && !r.error && r.data && r.data.length) break;
         }
         const userId = window._userId;
