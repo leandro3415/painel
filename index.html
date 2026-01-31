@@ -796,7 +796,7 @@
         return String(s).replace(/\D/g, '');
       }
 
-      // Gastos: busca em AMBAS as tabelas (gastos e Gastos) e junta, removendo duplicatas (n8n usa "Gastos")
+      // Gastos: busca em Gastos primeiro (nome no Supabase); fallback em "gastos" se existir
       async function buscarDeUmaTabela(nomeTabela) {
         let q = clientSupabase.from(nomeTabela).select('*');
         if (dataInicioStr) q = q.gte('data', dataInicioStr);
@@ -827,7 +827,7 @@
         let lista = [];
         const visto = new Set();
 
-        for (const nomeTabela of ['gastos', 'Gastos']) {
+        for (const nomeTabela of ['Gastos', 'gastos']) {
           const r = await buscarDeUmaTabela(nomeTabela);
           if (r.error && lista.length === 0 && tabelaNaoEncontrada(r.error)) continue;
           if (r.error && lista.length > 0) continue;
@@ -1276,7 +1276,7 @@
         for (const tbl of ['Gastos', 'gastos']) {
           const r = await clientSupabase.from(tbl).select('*').eq('descricao', DESC_RESUMO_GASTOS).in('celular', celularPerfil).limit(1);
           if (r && !r.error && r.data && r.data.length) {
-            resumoRow = r.data.find(x => soDigitos(x.celular) === soDigitos(userId)) || r.data[0];
+            resumoRow = r.data.find(x => soDigitos((x.celular || x.Celular) || '') === soDigitos(userId)) || r.data[0];
             resumoRow._tabela = tbl;
             break;
           }
@@ -1302,20 +1302,28 @@
             return;
           }
         } else {
-          const insertRow = { celular: userId, data: hoje, descricao: DESC_RESUMO_GASTOS, valor_total: 0, pago: false, [COL_SALDO]: novoSaldo };
+          const variantesInsert = [
+            { celular: userId, data: hoje, descricao: DESC_RESUMO_GASTOS, valor_total: 0, 'SALDO DISPONÍVEL': String(novoSaldo) },
+            { celular: userId, data: hoje, descricao: DESC_RESUMO_GASTOS, valor_total: 0, categoria: 'Resumo', 'SALDO DISPONÍVEL': String(novoSaldo) },
+            { celular: userId, data: hoje, descricao: DESC_RESUMO_GASTOS, [COL_SALDO]: novoSaldo },
+            { Celular: userId, Data: hoje, Descricao: DESC_RESUMO_GASTOS, Valor_total: 0, 'SALDO DISPONÍVEL': String(novoSaldo) },
+            { celular: userId, data: hoje, descricao: DESC_RESUMO_GASTOS, valor_total: 0 }
+          ];
           for (const tbl of ['Gastos', 'gastos']) {
-            let ins = await clientSupabase.from(tbl).insert(insertRow).select();
-            if (ins && ins.error && (ins.error.message || '').toLowerCase().includes('column')) {
-              ins = await clientSupabase.from(tbl).insert({ celular: userId, data: hoje, descricao: DESC_RESUMO_GASTOS, valor_total: 0, pago: false, 'SALDO DISPONÍVEL': String(novoSaldo) }).select();
-            }
-            if (ins && !ins.error) {
-              fecharModalSaldo();
-              carregarDados();
-              return;
+            for (let i = 0; i < variantesInsert.length; i++) {
+              let row = variantesInsert[i];
+              if (i === 4) row = { ...row, 'SALDO DISPONÍVEL': String(novoSaldo) };
+              const ins = await clientSupabase.from(tbl).insert(row).select();
+              if (ins && !ins.error) {
+                fecharModalSaldo();
+                carregarDados();
+                return;
+              }
+              if (ins && ins.error) console.warn('FinLeve insert saldo:', tbl, Object.keys(row), ins.error.message);
             }
           }
         }
-        alert('Não foi possível salvar o saldo. Verifique políticas RLS (SELECT/UPDATE/INSERT em Gastos) e se a coluna de saldo existe.');
+        alert('Não foi possível salvar o saldo. Verifique no Console (F12) a mensagem do Supabase e se a tabela Gastos tem coluna de saldo (ex: SALDO DISPONÍVEL).');
       } catch (e) {
         console.error('Erro ao adicionar saldo:', e);
         alert('Erro ao adicionar saldo. Verifique o console (F12).');
