@@ -1167,9 +1167,17 @@
           }
         }
         const saldoAtual = resumoRow ? (Number(resumoRow[COL_SALDO] ?? resumoRow['SALDO DISPONÍVEL']) || 0) : 0;
+        const gastosPagosAtual = resumoRow ? (Number(resumoRow['GASTOS PAGOS']) || 0) : 0;
+        const gastosPendentesAtual = resumoRow ? (Number(resumoRow['GASTOS PENDENTES']) || 0) : 0;
         const novoSaldo = saldoAtual - valor;
+        const novoGastosPagos = gastosPagosAtual + valor;
+        const novoGastosPendentes = Math.max(0, gastosPendentesAtual - valor);
         const tbl = resumoRow ? (resumoRow._tabela || 'Gastos') : 'Gastos';
-        const payloadSpace = { 'SALDO DISPONÍVEL': String(novoSaldo) };
+        const payloadSpace = {
+          'SALDO DISPONÍVEL': String(novoSaldo),
+          'GASTOS PAGOS': String(novoGastosPagos),
+          'GASTOS PENDENTES': String(novoGastosPendentes)
+        };
         if (resumoRow && resumoRow.id) {
           await clientSupabase.from(tbl).update(payloadSpace).eq('id', resumoRow.id).select();
         }
