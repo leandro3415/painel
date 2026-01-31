@@ -108,7 +108,6 @@
       margin-bottom: 1.5rem;
     }
 
-    /* Cards de resumo */
     .cards {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -157,7 +156,45 @@
       background-clip: text;
     }
 
-    /* Grid de gráficos */
+    .card-desc {
+      font-size: 0.7rem;
+      color: var(--cinza-claro);
+      opacity: 0.85;
+      margin-top: 0.25rem;
+    }
+
+    .badge-pago {
+      display: inline-block;
+      background: rgba(125, 211, 160, 0.25);
+      color: #7dd3a0;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+    }
+
+    .btn-pago, .btn-apagar {
+      font-size: 0.8rem;
+      padding: 0.35rem 0.7rem;
+      border-radius: 8px;
+      cursor: pointer;
+      border: none;
+      font-family: inherit;
+      font-weight: 600;
+    }
+
+    .btn-pago {
+      background: rgba(45, 125, 210, 0.6);
+      color: var(--branco);
+    }
+    .btn-pago:hover { background: var(--azul-destaque); }
+
+    .btn-apagar {
+      background: rgba(200, 80, 80, 0.4);
+      color: #ffb3b3;
+    }
+    .btn-apagar:hover { background: rgba(200, 80, 80, 0.7); }
+
     .grid-charts {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -187,7 +224,6 @@
       height: 260px;
     }
 
-    /* Tabelas / listas */
     .section-title {
       font-size: 1.2rem;
       font-weight: 700;
@@ -319,6 +355,24 @@
           <div class="card-value" id="qtd-gastos">0</div>
         </div>
         <div class="card">
+          <div class="card-icon">💵</div>
+          <div class="card-label">Saldo disponível</div>
+          <div class="card-value" id="saldo-disponivel">R$ 0,00</div>
+          <div class="card-desc">Ao marcar gasto como pago, o valor é descontado daqui.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">✅</div>
+          <div class="card-label">Gastos pagos</div>
+          <div class="card-value" id="gastos-pagos">R$ 0,00</div>
+          <div class="card-desc">Soma dos gastos já marcados como pagos.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">⏸</div>
+          <div class="card-label">Gastos pendentes</div>
+          <div class="card-value" id="gastos-pendentes">R$ 0,00</div>
+          <div class="card-desc">Soma dos gastos registrados ainda não pagos.</div>
+        </div>
+        <div class="card">
           <div class="card-icon">📅</div>
           <div class="card-label">Lembretes totais</div>
           <div class="card-value" id="total-lembretes">0</div>
@@ -370,6 +424,8 @@
                 <th>Descrição</th>
                 <th>Categoria</th>
                 <th>Valor</th>
+                <th>Status</th>
+                <th>Ações</th>
               </tr>
             </thead>
             <tbody id="tbody-gastos"></tbody>
@@ -388,6 +444,7 @@
                 <th>Hora</th>
                 <th>Título</th>
                 <th>Status</th>
+                <th>Ações</th>
               </tr>
             </thead>
             <tbody id="tbody-lembretes"></tbody>
@@ -401,10 +458,8 @@
   </div>
 
   <script>
-    // ========== CONFIGURAÇÃO: coloque sua URL e chave anônima do Supabase ==========
     const SUPABASE_URL = 'https://vwjuhgkoptqqhndalhro.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3anVoZ2tvcHRxcWhuZGFsaHJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyOTY5NzEsImV4cCI6MjA4Mzg3Mjk3MX0.Tg-_h5kKgn85FEBw_JeqFLQnzOvekxuE158skVCsyOg';
-    // =================================================================================
 
     const $ = (id) => document.getElementById(id);
     let clientSupabase = null;
@@ -433,7 +488,6 @@
       if (detalhe) console.error('FinLeve Supabase:', detalhe);
     }
 
-    // Lê o ID do usuário (celular/numero) da URL: /painel/558897849022 ou ?id=558897849022
     function getIdFromUrl() {
       const path = window.location.pathname.replace(/\/$/, '');
       const partes = path.split('/');
@@ -476,34 +530,24 @@
       }
 
       const periodo = parseInt($('periodo').value, 10) || 30;
-      // Quando periodo é 0 = "Todo o período", não filtra por data (mostra todos os gastos)
       const dataInicio = new Date();
       if (periodo > 0) dataInicio.setDate(dataInicio.getDate() - periodo);
       const dataInicioStr = periodo > 0 ? dataInicio.toISOString().split('T')[0] : null;
 
       let gastos = [];
       let lembretes = [];
+      let perfil = { saldo_disponivel: 0 };
 
-      // Teste rápido: primeiro select para ver resposta no console (F12)
-      try {
-        const testRes = await clientSupabase.from('gastos').select('*').limit(1);
-        console.log('FinLeve – teste gastos:', testRes.error ? { error: testRes.error.message, code: testRes.error.code } : { ok: true, count: (testRes.data && testRes.data.length) });
-      } catch (e) {
-        console.warn('FinLeve – teste gastos falhou:', e);
-      }
-
-      // Timeout para não ficar travado em "Carregando dados..."
       const timeoutMs = 20000;
       const timeoutPromise = (ms) => new Promise((_, rej) =>
         setTimeout(() => rej(new Error('timeout')), ms));
 
-      // Função auxiliar: busca com timeout e fallback de nome de tabela
       function tabelaNaoEncontrada(msg) {
         if (!msg) return false;
         const m = msg.toLowerCase();
         return m.includes('does not exist') || m.includes('could not find the table') || m.includes('schema cache');
       }
-      // Filtro por usuário: valores possíveis do celular (número e número@s.whatsapp.net)
+
       const celularValores = userId.includes('@')
         ? [userId]
         : [userId, userId + '@s.whatsapp.net'];
@@ -528,13 +572,11 @@
         return (res && res.data) ? res.data : [];
       }
 
-      // Extrai só os dígitos do número (ignora @s.whatsapp.net, espaços, etc.)
       function soDigitos(s) {
         if (s == null) return '';
         return String(s).replace(/\D/g, '');
       }
 
-      // Gastos: busca em AMBAS as tabelas (gastos e Gastos) e junta, removendo duplicatas (n8n usa "Gastos")
       async function buscarDeUmaTabela(nomeTabela) {
         let q = clientSupabase.from(nomeTabela).select('*');
         if (dataInicioStr) q = q.gte('data', dataInicioStr);
@@ -581,7 +623,6 @@
         }
 
         const filtrados = lista.filter(ehDoUsuario);
-        console.log('FinLeve – gastos: total da API =', lista.length, ', após filtro do usuário =', filtrados.length);
         if (dataInicioStr) {
           return filtrados.filter((g) => String(g.data || '') >= dataInicioStr).sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')));
         }
@@ -594,7 +635,7 @@
         const msg = e.message === 'timeout'
           ? 'Demorou muito (timeout). Verifique a URL/chave do Supabase, a conexão e as políticas RLS (SELECT para anon).'
           : ('Erro ao carregar gastos: ' + e.message);
-        mostrarErro(msg, 'Abra F12 → Console para o erro completo. Verifique: nome da tabela (gastos ou Gastos), políticas RLS (SELECT para anon).');
+        mostrarErro(msg, 'Abra F12 → Console para o erro completo.');
         return;
       }
 
@@ -603,18 +644,34 @@
         lembretes = await buscarComTimeout('lembretes', 'Lembretes', optsLembretes);
       } catch (e) {
         const msg = e.message === 'timeout'
-          ? 'Demorou muito (timeout) ao buscar lembretes. Verifique políticas RLS (SELECT para anon).'
+          ? 'Demorou muito (timeout) ao buscar lembretes.'
           : ('Erro ao carregar lembretes: ' + e.message);
-        mostrarErro(msg, 'Abra F12 → Console para o erro completo. Verifique: nome da tabela (lembretes ou Lembretes), políticas RLS (SELECT para anon).');
+        mostrarErro(msg, 'Abra F12 → Console para o erro completo.');
         return;
       }
+
+      const celularPerfil = userId.includes('@') ? [userId] : [userId, userId + '@s.whatsapp.net'];
+      for (const tbl of ['Perfil', 'perfil']) {
+        try {
+          const r = await clientSupabase.from(tbl).select('id, saldo_disponivel, celular').in('celular', celularPerfil);
+          if (r && !r.error && r.data && r.data.length) {
+            const row = r.data.find(x => soDigitos(x.celular) === soDigitos(userId)) || r.data[0];
+            perfil.saldo_disponivel = Number(row.saldo_disponivel) || 0;
+            perfil.id = row.id;
+            perfil.celular = row.celular;
+            break;
+          }
+        } catch (e) {}
+      }
+
+      window._userId = userId;
 
       $('loading').style.display = 'none';
       if ($('aviso-sem-id')) $('aviso-sem-id').style.display = 'none';
       $('erro').style.display = 'none';
       $('conteudo').style.display = 'block';
 
-      renderizarResumo(gastos, lembretes);
+      renderizarResumo(gastos, lembretes, perfil);
       renderizarGraficos(gastos, lembretes);
       renderizarTabelas(gastos, lembretes);
     }
@@ -623,10 +680,16 @@
       return Number(g.valor_total != null ? g.valor_total : g.valor) || 0;
     }
 
-    function renderizarResumo(gastos, lembretes) {
+    function renderizarResumo(gastos, lembretes, perfil) {
       const total = gastos.reduce((s, g) => s + valorGasto(g), 0);
       $('total-gastos').textContent = formatarMoeda(total);
       $('qtd-gastos').textContent = gastos.length;
+      const saldo = (perfil && perfil.saldo_disponivel != null) ? Number(perfil.saldo_disponivel) : 0;
+      $('saldo-disponivel').textContent = formatarMoeda(saldo);
+      const gastosPagos = gastos.filter(g => g.pago === true).reduce((s, g) => s + valorGasto(g), 0);
+      const gastosPend = gastos.filter(g => !g.pago).reduce((s, g) => s + valorGasto(g), 0);
+      $('gastos-pagos').textContent = formatarMoeda(gastosPagos);
+      $('gastos-pendentes').textContent = formatarMoeda(gastosPend);
       $('total-lembretes').textContent = lembretes.length;
       const pendentes = lembretes.filter(l => !l.notificado).length;
       $('lembretes-pendentes').textContent = pendentes;
@@ -758,13 +821,23 @@
         emptyG.style.display = 'none';
         gastos.slice(0, 20).forEach(g => {
           const tr = document.createElement('tr');
+          const pago = g.pago === true;
+          const statusBadge = pago ? '<span class="badge-pago">Pago</span>' : '<span class="badge-pendente">Pendente</span>';
+          const btn = pago ? '' : '<button type="button" class="btn-pago" data-gasto-id="' + (g.id || '') + '" data-gasto-valor="' + valorGasto(g) + '" data-gasto-tabela="Gastos">Marcar como pago</button>';
           tr.innerHTML = `
             <td>${formatarData(g.data)}</td>
             <td>${(g.descricao || '—').toString().slice(0, 40)}</td>
             <td>${(g.categoria || 'Outros')}</td>
             <td class="valor-positivo">${formatarMoeda(valorGasto(g))}</td>
+            <td>${statusBadge}</td>
+            <td>${btn}</td>
           `;
           tbodyG.appendChild(tr);
+          if (!pago && tr.querySelector('.btn-pago')) {
+            tr.querySelector('.btn-pago').addEventListener('click', function() {
+              marcarComoPago(this.dataset.gastoId, parseFloat(this.dataset.gastoValor) || 0, this.dataset.gastoTabela || 'Gastos');
+            });
+          }
         });
       }
 
@@ -785,15 +858,67 @@
             <td>${(l.hora || '—').toString().slice(0, 5)}</td>
             <td>${(l.titulo || '—').toString().slice(0, 50)}</td>
             <td>${status}</td>
+            <td><button type="button" class="btn-apagar" data-lembrete-id="' + (l.id || '') + '">Apagar</button></td>
           `;
           tbodyL.appendChild(tr);
+          tr.querySelector('.btn-apagar').addEventListener('click', function() {
+            apagarLembrete(this.dataset.lembreteId);
+          });
         });
+      }
+    }
+
+    async function marcarComoPago(gastoId, valor, tabelaNome) {
+      if (!gastoId || !clientSupabase || !window._userId) return;
+      try {
+        for (const tbl of [tabelaNome, tabelaNome === 'Gastos' ? 'gastos' : 'Gastos']) {
+          const r = await clientSupabase.from(tbl).update({ pago: true }).eq('id', gastoId).select();
+          if (r && !r.error && r.data && r.data.length) break;
+        }
+        const userId = window._userId;
+        const celularPerfil = userId.includes('@') ? [userId] : [userId, userId + '@s.whatsapp.net'];
+        let perfilRow = null;
+        for (const tbl of ['Perfil', 'perfil']) {
+          const r = await clientSupabase.from(tbl).select('*').in('celular', celularPerfil);
+          if (r && !r.error && r.data && r.data.length) {
+            perfilRow = r.data[0];
+            perfilRow._tabela = tbl;
+            break;
+          }
+        }
+        const novoSaldo = (perfilRow ? Number(perfilRow.saldo_disponivel) : 0) - valor;
+        const tblPerfil = (perfilRow && perfilRow._tabela) ? perfilRow._tabela : 'Perfil';
+        if (perfilRow && perfilRow.id) {
+          await clientSupabase.from(tblPerfil).update({ saldo_disponivel: novoSaldo }).eq('id', perfilRow.id);
+        } else {
+          await clientSupabase.from(tblPerfil).insert({ celular: userId, saldo_disponivel: novoSaldo });
+        }
+        carregarDados();
+      } catch (e) {
+        console.error('Erro ao marcar como pago:', e);
+        alert('Erro ao marcar como pago. Verifique o console (F12).');
+      }
+    }
+
+    async function apagarLembrete(lembreteId) {
+      if (!lembreteId || !clientSupabase) return;
+      if (!confirm('Apagar este lembrete? Ele será removido do banco de dados.')) return;
+      try {
+        let ok = false;
+        for (const tbl of ['Lembretes', 'lembretes']) {
+          const r = await clientSupabase.from(tbl).delete().eq('id', lembreteId);
+          if (r && !r.error) { ok = true; break; }
+        }
+        if (ok) carregarDados();
+        else alert('Não foi possível apagar. Verifique políticas RLS (DELETE para anon).');
+      } catch (e) {
+        console.error('Erro ao apagar lembrete:', e);
+        alert('Erro ao apagar. Verifique o console (F12).');
       }
     }
 
     $('periodo').addEventListener('change', carregarDados);
 
-    // Se estiver abrindo por file://, o navegador bloqueia acesso ao Supabase (CORS). Mostrar aviso.
     if (window.location.protocol === 'file:') {
       $('loading').style.display = 'none';
       $('aviso-file').style.display = 'block';
