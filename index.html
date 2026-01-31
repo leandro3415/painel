@@ -667,6 +667,13 @@
     let chartLembretes = null;
     let chartLembretesMes = null;
 
+    // Linha de resumo na tabela Gastos (guarda saldo, gastos pagos, gastos pendentes)
+    const DESC_RESUMO_GASTOS = '__RESUMO__';
+    // Nomes das colunas na tabela Gastos (Supabase pode usar com espaço ou snake_case)
+    const COL_SALDO = 'saldo_disponivel';
+    const COL_GASTOS_PAGOS = 'gastos_pagos';
+    const COL_GASTOS_PENDENTES = 'gastos_pendentes';
+
     function formatarMoeda(n) {
       return 'R$ ' + Number(n).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     }
@@ -837,10 +844,10 @@
 
         const filtrados = lista.filter(ehDoUsuario);
         console.log('FinLeve – gastos: total da API =', lista.length, ', após filtro do usuário =', filtrados.length);
-        if (dataInicioStr) {
-          return filtrados.filter((g) => String(g.data || '') >= dataInicioStr).sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')));
-        }
-        return filtrados.sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')));
+        let resultado = dataInicioStr
+          ? filtrados.filter((g) => String(g.data || '') >= dataInicioStr).sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')))
+          : filtrados.sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')));
+        return resultado;
       }
 
       try {
@@ -853,6 +860,10 @@
         return;
       }
 
+      // Linha de resumo na tabela Gastos (guarda saldo, gastos pagos, gastos pendentes) — não exibir na lista
+      const resumoRow = gastos.find(g => String(g.descricao || '').trim() === DESC_RESUMO_GASTOS);
+      gastos = gastos.filter(g => String(g.descricao || '').trim() !== DESC_RESUMO_GASTOS);
+
       const optsLembretes = { order: { col: 'data', asc: true }, celularIn: celularValores };
       try {
         lembretes = await buscarComTimeout('lembretes', 'Lembretes', optsLembretes);
@@ -864,7 +875,7 @@
         return;
       }
 
-      // Perfil (saldo disponível): tenta tabelas "Perfil" e "perfil"
+      // Perfil (saldo disponível): tenta tabelas "Perfil" e "perfil"; senão lê da linha de resumo em Gastos
       const celularPerfil = userId.includes('@') ? [userId] : [userId, userId + '@s.whatsapp.net'];
       for (const tbl of ['Perfil', 'perfil']) {
         try {
@@ -878,8 +889,22 @@
           }
         } catch (e) {}
       }
+      if ((perfil.saldo_disponivel == null || perfil.saldo_disponivel === 0) && resumoRow) {
+        const v = resumoRow[COL_SALDO] ?? resumoRow['SALDO DISPONÍVEL'];
+        if (v != null) perfil.saldo_disponivel = Number(v) || 0;
+      }
 
       window._userId = userId;
+
+      // Calcular gastos pagos e pendentes e salvar na tabela Gastos (linha de resumo)
+      const gastosPagosVal = gastos.filter(g => g.pago === true).reduce((s, g) => s + valorGasto(g), 0);
+      const gastosPendVal = gastos.filter(g => !g.pago).reduce((s, g) => s + valorGasto(g), 0);
+      const saldoParaSalvar = (perfil && perfil.saldo_disponivel != null) ? Number(perfil.saldo_disponivel) : 0;
+      try {
+        await salvarResumoGastos(clientSupabase, userId, celularPerfil, resumoRow, saldoParaSalvar, gastosPagosVal, gastosPendVal);
+      } catch (e) {
+        console.warn('FinLeve – aviso ao salvar resumo em Gastos:', e);
+      }
 
       $('loading').style.display = 'none';
       if ($('aviso-sem-id')) $('aviso-sem-id').style.display = 'none';
@@ -893,6 +918,58 @@
 
     function valorGasto(g) {
       return Number(g.valor_total != null ? g.valor_total : g.valor) || 0;
+    }
+
+    // Salva saldo, gastos pagos e gastos pendentes na tabela Gastos (linha de resumo por usuário).
+    // Colunas no Supabase: saldo_disponivel, gastos_pagos, gastos_pendentes (ou "SALDO DISPONÍVEL", "GASTOS PAGOS", "GASTOS PENDENTES"). Tipo pode ser numeric ou text.
+    async function salvarResumoGastos(client, userId, celularPerfil, resumoRow, saldo, gastosPagos, gastosPendentes) {
+      const payloadSnake = {
+        [COL_SALDO]: saldo,
+        [COL_GASTOS_PAGOS]: gastosPagos,
+        [COL_GASTOS_PENDENTES]: gastosPendentes
+      };
+      const payloadSpace = {
+        'SALDO DISPONÍVEL': String(saldo),
+        'GASTOS PAGOS': String(gastosPagos),
+        'GASTOS PENDENTES': String(gastosPendentes)
+      };
+      const hoje = new Date().toISOString().split('T')[0];
+      if (resumoRow && resumoRow.id) {
+        for (const tbl of ['Gastos', 'gastos']) {
+          let r = await client.from(tbl).update(payloadSnake).eq('id', resumoRow.id).select();
+          if (r && r.error && (r.error.message || '').toLowerCase().includes('column')) {
+            r = await client.from(tbl).update(payloadSpace).eq('id', resumoRow.id).select();
+          }
+          if (r && !r.error) return;
+        }
+      } else {
+        const insertRow = {
+          celular: userId,
+          data: hoje,
+          descricao: DESC_RESUMO_GASTOS,
+          valor_total: 0,
+          pago: false,
+          ...payloadSnake
+        };
+        for (const tbl of ['Gastos', 'gastos']) {
+          const r = await client.from(tbl).insert(insertRow).select();
+          if (r && r.error && (r.error.message || '').toLowerCase().includes('column')) {
+            const insertRowSpace = {
+              celular: userId,
+              data: hoje,
+              descricao: DESC_RESUMO_GASTOS,
+              valor_total: 0,
+              pago: false,
+              'SALDO DISPONÍVEL': String(saldo),
+              'GASTOS PAGOS': String(gastosPagos),
+              'GASTOS PENDENTES': String(gastosPendentes)
+            };
+            const r2 = await client.from(tbl).insert(insertRowSpace).select();
+            if (r2 && !r2.error) return;
+          }
+          if (r && !r.error) return;
+        }
+      }
     }
 
     function renderizarResumo(gastos, lembretes, perfil) {
