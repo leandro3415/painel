@@ -1241,9 +1241,9 @@
         alert('Sessão inválida. Recarregue a página com seu link pessoal.');
         return;
       }
+      const userId = window._userId;
+      const celularPerfil = userId.includes('@') ? [userId] : [userId, userId + '@s.whatsapp.net'];
       try {
-        const userId = window._userId;
-        const celularPerfil = userId.includes('@') ? [userId] : [userId, userId + '@s.whatsapp.net'];
         let perfilRow = null;
         let tblPerfil = 'Perfil';
         for (const tbl of ['Perfil', 'perfil']) {
@@ -1254,15 +1254,68 @@
             break;
           }
         }
-        const saldoAtual = perfilRow ? Number(perfilRow.saldo_disponivel) || 0 : 0;
-        const novoSaldo = saldoAtual + valor;
         if (perfilRow && perfilRow.id) {
+          const saldoAtual = Number(perfilRow.saldo_disponivel) || 0;
+          const novoSaldo = saldoAtual + valor;
           await clientSupabase.from(tblPerfil).update({ saldo_disponivel: novoSaldo }).eq('id', perfilRow.id);
-        } else {
-          await clientSupabase.from(tblPerfil).insert({ celular: userId, saldo_disponivel: novoSaldo });
+          fecharModalSaldo();
+          carregarDados();
+          return;
         }
-        fecharModalSaldo();
-        carregarDados();
+        if (perfilRow === null) {
+          for (const tbl of ['Perfil', 'perfil']) {
+            const r = await clientSupabase.from(tbl).insert({ celular: userId, saldo_disponivel: valor });
+            if (r && !r.error) {
+              fecharModalSaldo();
+              carregarDados();
+              return;
+            }
+          }
+        }
+        let resumoRow = null;
+        for (const tbl of ['Gastos', 'gastos']) {
+          const r = await clientSupabase.from(tbl).select('*').eq('descricao', DESC_RESUMO_GASTOS).in('celular', celularPerfil).limit(1);
+          if (r && !r.error && r.data && r.data.length) {
+            resumoRow = r.data.find(x => soDigitos(x.celular) === soDigitos(userId)) || r.data[0];
+            resumoRow._tabela = tbl;
+            break;
+          }
+        }
+        let saldoAtual = 0;
+        if (resumoRow) {
+          const v = resumoRow[COL_SALDO] ?? resumoRow['SALDO DISPONÍVEL'];
+          if (v != null) saldoAtual = Number(v) || 0;
+        }
+        const novoSaldo = saldoAtual + valor;
+        const payloadSnake = { [COL_SALDO]: novoSaldo };
+        const payloadSpace = { 'SALDO DISPONÍVEL': String(novoSaldo) };
+        const hoje = new Date().toISOString().split('T')[0];
+        if (resumoRow && resumoRow.id) {
+          const tbl = resumoRow._tabela || 'Gastos';
+          let ok = await clientSupabase.from(tbl).update(payloadSnake).eq('id', resumoRow.id).select();
+          if (ok && ok.error && (ok.error.message || '').toLowerCase().includes('column')) {
+            ok = await clientSupabase.from(tbl).update(payloadSpace).eq('id', resumoRow.id).select();
+          }
+          if (ok && !ok.error) {
+            fecharModalSaldo();
+            carregarDados();
+            return;
+          }
+        } else {
+          const insertRow = { celular: userId, data: hoje, descricao: DESC_RESUMO_GASTOS, valor_total: 0, pago: false, [COL_SALDO]: novoSaldo };
+          for (const tbl of ['Gastos', 'gastos']) {
+            let ins = await clientSupabase.from(tbl).insert(insertRow).select();
+            if (ins && ins.error && (ins.error.message || '').toLowerCase().includes('column')) {
+              ins = await clientSupabase.from(tbl).insert({ celular: userId, data: hoje, descricao: DESC_RESUMO_GASTOS, valor_total: 0, pago: false, 'SALDO DISPONÍVEL': String(novoSaldo) }).select();
+            }
+            if (ins && !ins.error) {
+              fecharModalSaldo();
+              carregarDados();
+              return;
+            }
+          }
+        }
+        alert('Não foi possível salvar o saldo. Verifique políticas RLS (SELECT/UPDATE/INSERT em Gastos) e se a coluna de saldo existe.');
       } catch (e) {
         console.error('Erro ao adicionar saldo:', e);
         alert('Erro ao adicionar saldo. Verifique o console (F12).');
