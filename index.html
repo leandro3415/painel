@@ -921,29 +921,39 @@
     }
 
     // Salva saldo, gastos pagos e gastos pendentes na tabela Gastos (linha de resumo por usuário).
-    // Colunas no Supabase: saldo_disponivel, gastos_pagos, gastos_pendentes (ou "SALDO DISPONÍVEL", "GASTOS PAGOS", "GASTOS PENDENTES"). Tipo pode ser numeric ou text.
+    // No Supabase a tabela Gastos usa colunas com espaço: "SALDO DISPONÍVEL", "GASTOS PAGOS", "GASTOS PENDENTES".
     async function salvarResumoGastos(client, userId, celularPerfil, resumoRow, saldo, gastosPagos, gastosPendentes) {
-      const payloadSnake = {
-        [COL_SALDO]: saldo,
-        [COL_GASTOS_PAGOS]: gastosPagos,
-        [COL_GASTOS_PENDENTES]: gastosPendentes
-      };
       const payloadSpace = {
         'SALDO DISPONÍVEL': String(saldo),
         'GASTOS PAGOS': String(gastosPagos),
         'GASTOS PENDENTES': String(gastosPendentes)
       };
+      const payloadSnake = {
+        [COL_SALDO]: saldo,
+        [COL_GASTOS_PAGOS]: gastosPagos,
+        [COL_GASTOS_PENDENTES]: gastosPendentes
+      };
       const hoje = new Date().toISOString().split('T')[0];
       if (resumoRow && resumoRow.id) {
         for (const tbl of ['Gastos', 'gastos']) {
-          let r = await client.from(tbl).update(payloadSnake).eq('id', resumoRow.id).select();
+          let r = await client.from(tbl).update(payloadSpace).eq('id', resumoRow.id).select();
           if (r && r.error && (r.error.message || '').toLowerCase().includes('column')) {
-            r = await client.from(tbl).update(payloadSpace).eq('id', resumoRow.id).select();
+            r = await client.from(tbl).update(payloadSnake).eq('id', resumoRow.id).select();
           }
           if (r && !r.error) return;
         }
       } else {
-        const insertRow = {
+        const insertRowSpace = {
+          celular: userId,
+          data: hoje,
+          descricao: DESC_RESUMO_GASTOS,
+          valor_total: 0,
+          pago: false,
+          'SALDO DISPONÍVEL': String(saldo),
+          'GASTOS PAGOS': String(gastosPagos),
+          'GASTOS PENDENTES': String(gastosPendentes)
+        };
+        const insertRowSnake = {
           celular: userId,
           data: hoje,
           descricao: DESC_RESUMO_GASTOS,
@@ -952,20 +962,9 @@
           ...payloadSnake
         };
         for (const tbl of ['Gastos', 'gastos']) {
-          const r = await client.from(tbl).insert(insertRow).select();
+          let r = await client.from(tbl).insert(insertRowSpace).select();
           if (r && r.error && (r.error.message || '').toLowerCase().includes('column')) {
-            const insertRowSpace = {
-              celular: userId,
-              data: hoje,
-              descricao: DESC_RESUMO_GASTOS,
-              valor_total: 0,
-              pago: false,
-              'SALDO DISPONÍVEL': String(saldo),
-              'GASTOS PAGOS': String(gastosPagos),
-              'GASTOS PENDENTES': String(gastosPendentes)
-            };
-            const r2 = await client.from(tbl).insert(insertRowSpace).select();
-            if (r2 && !r2.error) return;
+            r = await client.from(tbl).insert(insertRowSnake).select();
           }
           if (r && !r.error) return;
         }
@@ -1292,9 +1291,9 @@
         const hoje = new Date().toISOString().split('T')[0];
         if (resumoRow && resumoRow.id) {
           const tbl = resumoRow._tabela || 'Gastos';
-          let ok = await clientSupabase.from(tbl).update(payloadSnake).eq('id', resumoRow.id).select();
-          if (ok && ok.error && (ok.error.message || '').toLowerCase().includes('column')) {
-            ok = await clientSupabase.from(tbl).update(payloadSpace).eq('id', resumoRow.id).select();
+          let ok = await clientSupabase.from(tbl).update(payloadSpace).eq('id', resumoRow.id).select();
+          if (tbl === 'gastos' && ok && ok.error && (ok.error.message || '').toLowerCase().includes('column')) {
+            ok = await clientSupabase.from(tbl).update(payloadSnake).eq('id', resumoRow.id).select();
           }
           if (ok && !ok.error) {
             fecharModalSaldo();
