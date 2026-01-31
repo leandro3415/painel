@@ -669,10 +669,15 @@
 
     // Linha de resumo na tabela Gastos (guarda saldo, gastos pagos, gastos pendentes)
     const DESC_RESUMO_GASTOS = '__RESUMO__';
-    // Tabela no Supabase: "Gastos". Colunas de resumo: "SALDO DISPONÍVEL", "GASTOS PAGOS", "GASTOS PENDENTES".
+    // Tabela no Supabase: "Gastos". Colunas de resumo: "SALDO DISPONÍVEL", "GASTOS PAGOS", "GASTOS PENDENTES". Status: "pago" ou "Pago".
     const COL_SALDO = 'saldo_disponivel';
     const COL_GASTOS_PAGOS = 'gastos_pagos';
     const COL_GASTOS_PENDENTES = 'gastos_pendentes';
+
+    function isPago(g) {
+      if (!g) return false;
+      return g.pago === true || g.Pago === true || g.pago === 'true' || g.Pago === 'true';
+    }
 
     function formatarMoeda(n) {
       return 'R$ ' + Number(n).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
