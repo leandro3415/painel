@@ -875,21 +875,9 @@
         return;
       }
 
-      // Perfil (saldo disponível): tenta tabelas "Perfil" e "perfil"; senão lê da linha de resumo em Gastos
+      // Saldo disponível: só na tabela Gastos (linha de resumo). Não existe tabela Perfil.
       const celularPerfil = userId.includes('@') ? [userId] : [userId, userId + '@s.whatsapp.net'];
-      for (const tbl of ['Perfil', 'perfil']) {
-        try {
-          const r = await clientSupabase.from(tbl).select('id, saldo_disponivel, celular').in('celular', celularPerfil);
-          if (r && !r.error && r.data && r.data.length) {
-            const row = r.data.find(x => soDigitos(x.celular) === soDigitos(userId)) || r.data[0];
-            perfil.saldo_disponivel = Number(row.saldo_disponivel) || 0;
-            perfil.id = row.id;
-            perfil.celular = row.celular;
-            break;
-          }
-        } catch (e) {}
-      }
-      if ((perfil.saldo_disponivel == null || perfil.saldo_disponivel === 0) && resumoRow) {
+      if (resumoRow) {
         const v = resumoRow[COL_SALDO] ?? resumoRow['SALDO DISPONÍVEL'];
         if (v != null) perfil.saldo_disponivel = Number(v) || 0;
       }
@@ -1168,21 +1156,22 @@
         }
         const userId = window._userId;
         const celularPerfil = userId.includes('@') ? [userId] : [userId, userId + '@s.whatsapp.net'];
-        let perfilRow = null;
-        for (const tbl of ['Perfil', 'perfil']) {
-          const r = await clientSupabase.from(tbl).select('*').in('celular', celularPerfil);
+        // Atualizar saldo na linha de resumo da tabela Gastos (não existe tabela Perfil)
+        let resumoRow = null;
+        for (const tbl of ['Gastos', 'gastos']) {
+          const r = await clientSupabase.from(tbl).select('*').eq('descricao', DESC_RESUMO_GASTOS).in('celular', celularPerfil).limit(5);
           if (r && !r.error && r.data && r.data.length) {
-            perfilRow = r.data[0];
-            perfilRow._tabela = tbl;
+            resumoRow = r.data.find(x => soDigitos((x.celular || x.Celular) || '') === soDigitos(userId)) || r.data[0];
+            resumoRow._tabela = tbl;
             break;
           }
         }
-        const novoSaldo = (perfilRow ? Number(perfilRow.saldo_disponivel) : 0) - valor;
-        const tblPerfil = (perfilRow && perfilRow._tabela) ? perfilRow._tabela : 'Perfil';
-        if (perfilRow && perfilRow.id) {
-          await clientSupabase.from(tblPerfil).update({ saldo_disponivel: novoSaldo }).eq('id', perfilRow.id);
-        } else {
-          await clientSupabase.from(tblPerfil).insert({ celular: userId, saldo_disponivel: novoSaldo });
+        const saldoAtual = resumoRow ? (Number(resumoRow[COL_SALDO] ?? resumoRow['SALDO DISPONÍVEL']) || 0) : 0;
+        const novoSaldo = saldoAtual - valor;
+        const tbl = resumoRow ? (resumoRow._tabela || 'Gastos') : 'Gastos';
+        const payloadSpace = { 'SALDO DISPONÍVEL': String(novoSaldo) };
+        if (resumoRow && resumoRow.id) {
+          await clientSupabase.from(tbl).update(payloadSpace).eq('id', resumoRow.id).select();
         }
         carregarDados();
       } catch (e) {
@@ -1243,34 +1232,7 @@
       const userId = window._userId;
       const celularPerfil = userId.includes('@') ? [userId] : [userId, userId + '@s.whatsapp.net'];
       try {
-        let perfilRow = null;
-        let tblPerfil = 'Perfil';
-        for (const tbl of ['Perfil', 'perfil']) {
-          const r = await clientSupabase.from(tbl).select('*').in('celular', celularPerfil);
-          if (r && !r.error && r.data && r.data.length) {
-            perfilRow = r.data.find(x => soDigitos(x.celular) === soDigitos(userId)) || r.data[0];
-            tblPerfil = tbl;
-            break;
-          }
-        }
-        if (perfilRow && perfilRow.id) {
-          const saldoAtual = Number(perfilRow.saldo_disponivel) || 0;
-          const novoSaldo = saldoAtual + valor;
-          await clientSupabase.from(tblPerfil).update({ saldo_disponivel: novoSaldo }).eq('id', perfilRow.id);
-          fecharModalSaldo();
-          carregarDados();
-          return;
-        }
-        if (perfilRow === null) {
-          for (const tbl of ['Perfil', 'perfil']) {
-            const r = await clientSupabase.from(tbl).insert({ celular: userId, saldo_disponivel: valor });
-            if (r && !r.error) {
-              fecharModalSaldo();
-              carregarDados();
-              return;
-            }
-          }
-        }
+        // Saldo fica na tabela Gastos (linha de resumo). Não existe tabela Perfil.
         let resumoRow = null;
         for (const tbl of ['Gastos', 'gastos']) {
           const r = await clientSupabase.from(tbl).select('*').eq('descricao', DESC_RESUMO_GASTOS).in('celular', celularPerfil).limit(1);
