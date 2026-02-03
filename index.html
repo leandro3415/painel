@@ -1877,29 +1877,23 @@
       if (!id || !clientSupabase) return;
       if (!titulo) { alert('Informe o título do lembrete.'); return; }
       if (!dataVal) { alert('Informe a data.'); return; }
-      const idNum = /^\d+$/.test(id) ? parseInt(id, 10) : id;
+      // Supabase Lembretes: colunas em minúsculas (data, hora, titulo) e id é uuid (string)
       try {
-        const variantes = [
-          { data: dataVal, hora, titulo },
-          { Data: dataVal, Hora: hora, Titulo: titulo }
-        ];
+        const payload = { data: dataVal, hora, titulo };
         let sucesso = false;
         for (const tbl of ['Lembretes', 'lembretes']) {
-          if (sucesso) break;
-          for (const payload of variantes) {
-            const r = await clientSupabase.from(tbl).update(payload).eq('id', idNum).select();
-            if (r && !r.error && r.data && r.data.length > 0) {
-              sucesso = true;
-              break;
-            }
-            if (r && r.error) console.warn('FinLeve update lembrete:', tbl, Object.keys(payload), r.error.message);
+          const r = await clientSupabase.from(tbl).update(payload).eq('id', id).select();
+          if (r && !r.error && r.data && r.data.length > 0) {
+            sucesso = true;
+            break;
           }
+          if (r && r.error) console.warn('FinLeve update lembrete:', tbl, r.error.message);
         }
         if (sucesso) {
           fecharModalEditarLembrete();
           carregarDados();
         } else {
-          alert('Não foi possível atualizar o lembrete no Supabase. Verifique políticas RLS (UPDATE) e nomes das colunas (data, hora, titulo). Abra F12 → Console para detalhes.');
+          alert('Não foi possível atualizar o lembrete no Supabase. Verifique políticas RLS (UPDATE) para a tabela Lembretes. Abra F12 → Console para detalhes.');
         }
       } catch (e) {
         console.error('Erro ao editar lembrete:', e);
