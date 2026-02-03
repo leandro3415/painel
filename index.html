@@ -518,33 +518,64 @@
       .chart-wrap { height: 220px; }
       .chart-box h3 { font-size: 0.95rem; }
       .section-title { font-size: 1.05rem; margin-bottom: 0.75rem; }
+      /* Tabelas viram cards no mobile: sem rolagem horizontal */
       .tabela-box {
-        padding: 0.75rem;
+        padding: 0.75rem 0;
         margin-bottom: 1rem;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
+        overflow-x: visible;
       }
       .tabela-box table {
-        min-width: 580px;
-        font-size: 0.85rem;
+        min-width: 0;
+        width: 100%;
+        font-size: 0.9rem;
       }
-      .tabela-box th,
+      .tabela-box thead { display: none; }
+      .tabela-box tbody,
+      .tabela-box tr,
+      .tabela-box td { display: block; }
+      .tabela-box tr {
+        background: linear-gradient(135deg, rgba(15, 39, 68, 0.5) 0%, rgba(10, 22, 40, 0.7) 100%);
+        border: 1px solid rgba(77, 163, 255, 0.2);
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+      }
+      .tabela-box tr:last-child { margin-bottom: 0; }
       .tabela-box td {
-        padding: 0.6rem 0.5rem;
-        white-space: nowrap;
+        padding: 0.4rem 0;
+        border: none;
+        white-space: normal;
       }
-      .tabela-box th:nth-child(1),
-      .tabela-box td:nth-child(1) { min-width: 72px; }
-      .tabela-box th:nth-child(2),
-      .tabela-box td:nth-child(2) { min-width: 90px; }
-      .tabela-box th:nth-child(3),
-      .tabela-box td:nth-child(3) { min-width: 70px; }
-      .tabela-box th:nth-child(4),
-      .tabela-box td:nth-child(4) { min-width: 72px; }
-      .tabela-box th:nth-child(5),
-      .tabela-box td:nth-child(5) { min-width: 70px; }
-      .tabela-box th:nth-child(6),
-      .tabela-box td:nth-child(6) { min-width: 120px; }
+      .tabela-box td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        font-size: 0.75rem;
+        color: var(--cinza-claro);
+        display: inline-block;
+        min-width: 5.5rem;
+        margin-right: 0.5rem;
+      }
+      .tabela-box td.td-acoes {
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid rgba(77, 163, 255, 0.2);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+      }
+      .tabela-box td.td-acoes::before {
+        display: block;
+        margin-bottom: 0.25rem;
+        width: 100%;
+        min-width: 0;
+      }
+      .tabela-box td.td-acoes .acoes-celula {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
       /* Menu sempre em uma linha no mobile, os 3 itens lado a lado */
       .nav-menu {
         display: flex;
@@ -1251,12 +1282,12 @@
           const btnPago = pago ? '' : '<button type="button" class="btn-pago" data-gasto-id="' + (g.id || '') + '" data-gasto-valor="' + valorNum + '" data-gasto-tabela="Gastos">Marcar como pago</button>';
           const acoes = '<div class="acoes-celula"><button type="button" class="btn-alterar" data-gasto-id="' + (g.id || '') + '" data-gasto-data="' + (g.data || '') + '" data-gasto-descricao="' + (g.descricao || '').replace(/"/g, '&quot;') + '" data-gasto-categoria="' + (g.categoria || 'Outros').replace(/"/g, '&quot;') + '" data-gasto-valor="' + valorNum + '">Alterar</button>' + btnPago + '</div>';
           tr.innerHTML = `
-            <td>${formatarData(g.data)}</td>
-            <td>${(g.descricao || '—').toString().slice(0, 40)}</td>
-            <td>${(g.categoria || 'Outros')}</td>
-            <td class="valor-positivo">${formatarMoeda(valorNum)}</td>
-            <td>${statusBadge}</td>
-            <td>${acoes}</td>
+            <td data-label="Data">${formatarData(g.data)}</td>
+            <td data-label="Descrição">${(g.descricao || '—').toString().slice(0, 40)}</td>
+            <td data-label="Categoria">${(g.categoria || 'Outros')}</td>
+            <td class="valor-positivo" data-label="Valor">${formatarMoeda(valorNum)}</td>
+            <td data-label="Status">${statusBadge}</td>
+            <td class="td-acoes" data-label="Ações">${acoes}</td>
           `;
           tbodyG.appendChild(tr);
           const btnPagoEl = tr.querySelector('.btn-pago');
@@ -1294,11 +1325,11 @@
             : '<span class="badge-pendente">Pendente</span>';
           const tituloEsc = (l.titulo || '').toString().replace(/"/g, '&quot;');
           tr.innerHTML = `
-            <td>${formatarData(l.data)}</td>
-            <td>${(l.hora || '—').toString().slice(0, 5)}</td>
-            <td>${(l.titulo || '—').toString().slice(0, 50)}</td>
-            <td>${status}</td>
-            <td><div class="acoes-celula"><button type="button" class="btn-alterar" data-lembrete-id="${l.id || ''}" data-lembrete-data="${l.data || ''}" data-lembrete-hora="${(l.hora || '').toString().slice(0, 5)}" data-lembrete-titulo="${tituloEsc}">Alterar</button><button type="button" class="btn-apagar" data-lembrete-id="${l.id || ''}">Apagar</button></div></td>
+            <td data-label="Data">${formatarData(l.data)}</td>
+            <td data-label="Hora">${(l.hora || '—').toString().slice(0, 5)}</td>
+            <td data-label="Título">${(l.titulo || '—').toString().slice(0, 50)}</td>
+            <td data-label="Status">${status}</td>
+            <td class="td-acoes" data-label="Ações"><div class="acoes-celula"><button type="button" class="btn-alterar" data-lembrete-id="${l.id || ''}" data-lembrete-data="${l.data || ''}" data-lembrete-hora="${(l.hora || '').toString().slice(0, 5)}" data-lembrete-titulo="${tituloEsc}">Alterar</button><button type="button" class="btn-apagar" data-lembrete-id="${l.id || ''}">Apagar</button></div></td>
           `;
           tbodyL.appendChild(tr);
           tr.querySelector('.btn-apagar').addEventListener('click', function() {
