@@ -746,7 +746,7 @@
       <nav class="nav-menu" aria-label="Navegação do painel">
         <a href="#secao-categorias" class="nav-menu-item" data-secao="secao-categorias">📊 Gastos por categoria</a>
         <a href="#secao-ultimos-gastos" class="nav-menu-item" data-secao="secao-ultimos-gastos">💰 Últimos gastos</a>
-        <a href="#secao-proximos-lembretes" class="nav-menu-item" data-secao="secao-proximos-lembretes">📅 Próximos lembretes</a>
+        <a href="#secao-proximos-lembretes" class="nav-menu-item" data-secao="secao-proximos-lembretes">📅 Lembretes</a>
       </nav>
       <section class="cards">
         <div class="card">
@@ -851,7 +851,17 @@
       </section>
 
       <section id="secao-proximos-lembretes">
-        <h2 class="section-title">📅 Próximos lembretes</h2>
+        <div class="section-header-gastos section-header-lembretes">
+          <h2 class="section-title">📅 Lembretes</h2>
+          <div class="filtros-gastos filtros-lembretes">
+            <button type="button" class="filtro-btn filtro-pagos" id="filtro-notificados-lemb" aria-pressed="false">Notificados</button>
+            <button type="button" class="filtro-btn filtro-pendentes" id="filtro-pendentes-lemb" aria-pressed="false">Pendentes</button>
+            <div class="filtro-search-wrap">
+              <input type="text" id="busca-lembretes" class="filtro-input" placeholder="Buscar..." autocomplete="off" style="display: none;">
+              <button type="button" class="filtro-btn filtro-lupa" id="filtro-lupa-lemb" aria-label="Buscar lembretes" title="Buscar">🔍</button>
+            </div>
+          </div>
+        </div>
         <div class="tabela-box">
           <table>
             <thead>
@@ -942,6 +952,8 @@
     let _lembretesAtuais = [];
     let filtroGastosStatus = 'todos'; // 'todos' | 'pagos' | 'pendentes'
     let filtroGastosTexto = '';
+    let filtroLembretesStatus = 'todos'; // 'todos' | 'notificados' | 'pendentes'
+    let filtroLembretesTexto = '';
 
     // Linha de resumo na tabela Gastos (guarda saldo, gastos pagos, gastos pendentes)
     const DESC_RESUMO_GASTOS = '__RESUMO__';
@@ -1387,8 +1399,9 @@
     }
 
     function aplicarFiltroGastos() {
-      const filtrados = filtrarGastosPorFiltro(_gastosAtuais);
-      renderizarTabelas(filtrados, _lembretesAtuais);
+      const filtradosG = filtrarGastosPorFiltro(_gastosAtuais);
+      const filtradosL = filtrarLembretesPorFiltro(_lembretesAtuais);
+      renderizarTabelas(filtradosG, filtradosL);
       const btnPagos = $('filtro-pagos');
       const btnPendentes = $('filtro-pendentes');
       if (btnPagos) {
@@ -1398,6 +1411,36 @@
       if (btnPendentes) {
         btnPendentes.classList.toggle('ativo', filtroGastosStatus === 'pendentes');
         btnPendentes.setAttribute('aria-pressed', filtroGastosStatus === 'pendentes');
+      }
+    }
+
+    function filtrarLembretesPorFiltro(lembretes) {
+      const texto = filtroLembretesTexto.toLowerCase().trim();
+      return lembretes.filter(l => {
+        const notif = !!l.notificado;
+        if (filtroLembretesStatus === 'notificados' && !notif) return false;
+        if (filtroLembretesStatus === 'pendentes' && notif) return false;
+        if (texto) {
+          const tit = (l.titulo || '').toLowerCase();
+          if (!tit.includes(texto)) return false;
+        }
+        return true;
+      });
+    }
+
+    function aplicarFiltroLembretes() {
+      const filtradosG = filtrarGastosPorFiltro(_gastosAtuais);
+      const filtradosL = filtrarLembretesPorFiltro(_lembretesAtuais);
+      renderizarTabelas(filtradosG, filtradosL);
+      const btnNotif = $('filtro-notificados-lemb');
+      const btnPend = $('filtro-pendentes-lemb');
+      if (btnNotif) {
+        btnNotif.classList.toggle('ativo', filtroLembretesStatus === 'notificados');
+        btnNotif.setAttribute('aria-pressed', filtroLembretesStatus === 'notificados');
+      }
+      if (btnPend) {
+        btnPend.classList.toggle('ativo', filtroLembretesStatus === 'pendentes');
+        btnPend.setAttribute('aria-pressed', filtroLembretesStatus === 'pendentes');
       }
     }
 
@@ -1586,6 +1629,51 @@
           filtroGastosTexto = '';
           this.value = '';
           aplicarFiltroGastos();
+        }
+      });
+    }
+
+    // Submenu Lembretes: Notificados (verde), Pendentes (amarelo), Lupa (azul)
+    if ($('filtro-notificados-lemb')) {
+      $('filtro-notificados-lemb').addEventListener('click', function() {
+        filtroLembretesStatus = filtroLembretesStatus === 'notificados' ? 'todos' : 'notificados';
+        aplicarFiltroLembretes();
+      });
+    }
+    if ($('filtro-pendentes-lemb')) {
+      $('filtro-pendentes-lemb').addEventListener('click', function() {
+        filtroLembretesStatus = filtroLembretesStatus === 'pendentes' ? 'todos' : 'pendentes';
+        aplicarFiltroLembretes();
+      });
+    }
+    if ($('filtro-lupa-lemb')) {
+      $('filtro-lupa-lemb').addEventListener('click', function() {
+        const input = $('busca-lembretes');
+        if (!input) return;
+        const visivel = input.style.display !== 'none';
+        input.style.display = visivel ? 'none' : '';
+        if (!visivel) {
+          input.focus();
+          input.value = filtroLembretesTexto;
+        } else {
+          filtroLembretesTexto = '';
+          input.value = '';
+          aplicarFiltroLembretes();
+        }
+      });
+    }
+    if ($('busca-lembretes')) {
+      $('busca-lembretes').addEventListener('input', function() {
+        filtroLembretesTexto = this.value;
+        aplicarFiltroLembretes();
+      });
+      $('busca-lembretes').addEventListener('keydown', function(ev) {
+        if (ev.key === 'Escape') {
+          this.blur();
+          this.style.display = 'none';
+          filtroLembretesTexto = '';
+          this.value = '';
+          aplicarFiltroLembretes();
         }
       });
     }
