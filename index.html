@@ -1811,7 +1811,7 @@
     }
     async function salvarGastoEditado() {
       const id = $('editar-gasto-id').value.trim();
-      const data = $('editar-gasto-data').value.trim();
+      const dataVal = $('editar-gasto-data').value.trim();
       const descricao = $('editar-gasto-descricao').value.trim();
       const categoria = $('editar-gasto-categoria').value.trim() || 'Outros';
       const valorStr = ($('editar-gasto-valor').value || '').trim().replace(/\./g, '').replace(',', '.');
@@ -1819,22 +1819,36 @@
       if (!id || !clientSupabase) return;
       if (!descricao) { alert('Informe a descrição.'); return; }
       if (isNaN(valor) || valor < 0) { alert('Informe um valor válido.'); return; }
-      if (!data) { alert('Informe a data.'); return; }
+      if (!dataVal) { alert('Informe a data.'); return; }
+      const idNum = /^\d+$/.test(id) ? parseInt(id, 10) : id;
       try {
-        const payload = { data: data, descricao: descricao, categoria: categoria, valor_total: valor };
-        let r = await clientSupabase.from('Gastos').update(payload).eq('id', id).select();
-        if (r && r.error && (r.error.message || '').toLowerCase().includes('valor_total')) {
-          r = await clientSupabase.from('Gastos').update({ data: data, descricao: descricao, categoria: categoria, valor: valor }).eq('id', id).select();
+        const variantes = [
+          { data: dataVal, descricao, categoria, valor_total: valor },
+          { data: dataVal, descricao, categoria, valor },
+          { Data: dataVal, Descricao: descricao, Categoria: categoria, Valor_total: valor },
+          { Data: dataVal, Descricao: descricao, Categoria: categoria, Valor: valor }
+        ];
+        let sucesso = false;
+        for (const tbl of ['Gastos', 'gastos']) {
+          if (sucesso) break;
+          for (const payload of variantes) {
+            const r = await clientSupabase.from(tbl).update(payload).eq('id', idNum).select();
+            if (r && !r.error && r.data && r.data.length > 0) {
+              sucesso = true;
+              break;
+            }
+            if (r && r.error) console.warn('FinLeve update gasto:', tbl, Object.keys(payload), r.error.message);
+          }
         }
-        if (r && !r.error) {
+        if (sucesso) {
           fecharModalEditarGasto();
           carregarDados();
         } else {
-          alert(r && r.error ? r.error.message : 'Não foi possível atualizar o gasto.');
+          alert('Não foi possível atualizar o gasto no Supabase. Verifique políticas RLS (UPDATE) e nomes das colunas (data, descricao, categoria, valor_total). Abra F12 → Console para detalhes.');
         }
       } catch (e) {
         console.error('Erro ao editar gasto:', e);
-        alert('Erro ao salvar. Verifique o console (F12).');
+        alert('Erro ao salvar: ' + (e.message || e) + '. Verifique o console (F12).');
       }
     }
     if ($('btn-editar-gasto-cancelar')) $('btn-editar-gasto-cancelar').addEventListener('click', fecharModalEditarGasto);
@@ -1857,24 +1871,39 @@
     }
     async function salvarLembreteEditado() {
       const id = $('editar-lembrete-id').value.trim();
-      const data = $('editar-lembrete-data').value.trim();
-      const hora = ($('editar-lembrete-hora').value || '').trim().slice(0, 5);
+      const dataVal = $('editar-lembrete-data').value.trim();
+      const hora = ($('editar-lembrete-hora').value || '').trim().slice(0, 5) || null;
       const titulo = $('editar-lembrete-titulo').value.trim();
       if (!id || !clientSupabase) return;
       if (!titulo) { alert('Informe o título do lembrete.'); return; }
-      if (!data) { alert('Informe a data.'); return; }
+      if (!dataVal) { alert('Informe a data.'); return; }
+      const idNum = /^\d+$/.test(id) ? parseInt(id, 10) : id;
       try {
-        const payload = { data: data, hora: hora || null, titulo: titulo };
-        const r = await clientSupabase.from('Lembretes').update(payload).eq('id', id).select();
-        if (r && !r.error) {
+        const variantes = [
+          { data: dataVal, hora, titulo },
+          { Data: dataVal, Hora: hora, Titulo: titulo }
+        ];
+        let sucesso = false;
+        for (const tbl of ['Lembretes', 'lembretes']) {
+          if (sucesso) break;
+          for (const payload of variantes) {
+            const r = await clientSupabase.from(tbl).update(payload).eq('id', idNum).select();
+            if (r && !r.error && r.data && r.data.length > 0) {
+              sucesso = true;
+              break;
+            }
+            if (r && r.error) console.warn('FinLeve update lembrete:', tbl, Object.keys(payload), r.error.message);
+          }
+        }
+        if (sucesso) {
           fecharModalEditarLembrete();
           carregarDados();
         } else {
-          alert(r && r.error ? r.error.message : 'Não foi possível atualizar o lembrete.');
+          alert('Não foi possível atualizar o lembrete no Supabase. Verifique políticas RLS (UPDATE) e nomes das colunas (data, hora, titulo). Abra F12 → Console para detalhes.');
         }
       } catch (e) {
         console.error('Erro ao editar lembrete:', e);
-        alert('Erro ao salvar. Verifique o console (F12).');
+        alert('Erro ao salvar: ' + (e.message || e) + '. Verifique o console (F12).');
       }
     }
     if ($('btn-editar-lembrete-cancelar')) $('btn-editar-lembrete-cancelar').addEventListener('click', fecharModalEditarLembrete);
