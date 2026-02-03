@@ -72,6 +72,51 @@
 
     .tagline { font-size: 0.9rem; color: var(--cinza-claro); opacity: 0.9; }
 
+    /* Menu de navegação rápida */
+    .nav-menu {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.75rem;
+      padding: 0.85rem 1rem;
+      background: linear-gradient(135deg, rgba(15, 39, 68, 0.5) 0%, rgba(10, 22, 40, 0.7) 100%);
+      border: 1px solid rgba(77, 163, 255, 0.2);
+      border-radius: 14px;
+      justify-content: center;
+      align-items: center;
+    }
+    .nav-menu-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.6rem 1.1rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--cinza-claro);
+      text-decoration: none;
+      background: rgba(77, 163, 255, 0.1);
+      border: 1px solid rgba(77, 163, 255, 0.25);
+      border-radius: 10px;
+      transition: color 0.2s, background 0.2s, border-color 0.2s, transform 0.15s;
+    }
+    .nav-menu-item:hover {
+      color: var(--branco);
+      background: rgba(77, 163, 255, 0.25);
+      border-color: rgba(77, 163, 255, 0.45);
+      transform: translateY(-2px);
+    }
+    .nav-menu-item:focus {
+      outline: none;
+      border-color: var(--azul-brilho);
+      box-shadow: 0 0 0 2px rgba(77, 163, 255, 0.3);
+    }
+    .nav-menu-item.ativo {
+      color: var(--branco);
+      background: rgba(77, 163, 255, 0.3);
+      border-color: var(--azul-destaque);
+    }
+    html { scroll-behavior: smooth; }
+
     .filtro-periodo {
       display: flex;
       gap: 0.5rem;
@@ -174,7 +219,7 @@
       border-radius: 999px;
     }
 
-    .btn-pago, .btn-apagar {
+    .btn-pago, .btn-apagar, .btn-alterar {
       font-size: 0.8rem;
       padding: 0.35rem 0.7rem;
       border-radius: 8px;
@@ -195,6 +240,24 @@
       color: #ffb3b3;
     }
     .btn-apagar:hover { background: rgba(200, 80, 80, 0.7); }
+
+    .btn-alterar {
+      background: rgba(77, 163, 255, 0.35);
+      color: var(--branco);
+    }
+    .btn-alterar:hover { background: var(--azul-destaque); }
+
+    .acoes-celula {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      align-items: center;
+    }
+    .acoes-celula .btn-pago,
+    .acoes-celula .btn-alterar,
+    .acoes-celula .btn-apagar {
+      white-space: nowrap;
+    }
 
     /* Grid de gráficos */
     .grid-charts {
@@ -410,6 +473,9 @@
       color: var(--cinza-claro);
     }
 
+    /* Modal editar (gasto/lembrete) - reutiliza estilo base */
+    .modal-editar .modal-botoes { margin-top: 1.25rem; }
+
     /* Responsivo mobile */
     @media (max-width: 767px) {
       .container { padding: 0.75rem 1rem; }
@@ -473,11 +539,21 @@
       .tabela-box td:nth-child(5) { min-width: 70px; }
       .tabela-box th:nth-child(6),
       .tabela-box td:nth-child(6) { min-width: 120px; }
-      .btn-pago, .btn-apagar {
-        min-height: 44px;
-        padding: 0.5rem 0.75rem;
+      .nav-menu {
+        padding: 0.65rem 0.75rem;
+        gap: 0.5rem;
+        margin-bottom: 1.25rem;
+      }
+      .nav-menu-item {
+        padding: 0.5rem 0.85rem;
+        font-size: 0.8rem;
+      }
+      .btn-pago, .btn-apagar, .btn-alterar {
+        min-height: 38px;
+        padding: 0.4rem 0.6rem;
         font-size: 0.75rem;
       }
+      .acoes-celula { gap: 0.35rem; }
       .btn-adicionar-saldo {
         min-height: 44px;
         padding: 0.6rem 1rem;
@@ -526,6 +602,11 @@
     </div>
     <div id="loading" class="loading-msg">Carregando dados…</div>
     <div id="conteudo" style="display: none;">
+      <nav class="nav-menu" aria-label="Navegação do painel">
+        <a href="#secao-categorias" class="nav-menu-item" data-secao="secao-categorias">📊 Gastos por categoria</a>
+        <a href="#secao-ultimos-gastos" class="nav-menu-item" data-secao="secao-ultimos-gastos">💰 Últimos gastos</a>
+        <a href="#secao-proximos-lembretes" class="nav-menu-item" data-secao="secao-proximos-lembretes">📅 Próximos lembretes</a>
+      </nav>
       <section class="cards">
         <div class="card">
           <div class="card-icon">💰</div>
@@ -568,7 +649,7 @@
         </div>
       </section>
 
-      <section class="grid-charts">
+      <section class="grid-charts" id="secao-categorias">
         <div class="chart-box">
           <h3>📊 Gastos por categoria</h3>
           <div class="chart-wrap">
@@ -598,7 +679,7 @@
         </div>
       </section>
 
-      <section>
+      <section id="secao-ultimos-gastos">
         <h2 class="section-title">💰 Últimos gastos</h2>
         <div class="tabela-box">
           <table>
@@ -618,7 +699,7 @@
         </div>
       </section>
 
-      <section>
+      <section id="secao-proximos-lembretes">
         <h2 class="section-title">📅 Próximos lembretes</h2>
         <div class="tabela-box">
           <table>
@@ -650,6 +731,44 @@
       <div class="modal-botoes">
         <button type="button" class="btn-modal-cancelar" id="btn-modal-saldo-cancelar">Cancelar</button>
         <button type="button" class="btn-modal-confirmar" id="btn-modal-saldo-confirmar">Adicionar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Editar gasto -->
+  <div id="modal-editar-gasto-overlay" class="modal-overlay" role="dialog" aria-labelledby="modal-editar-gasto-titulo" aria-modal="true">
+    <div class="modal-saldo modal-editar">
+      <h3 id="modal-editar-gasto-titulo">Alterar gasto</h3>
+      <input type="hidden" id="editar-gasto-id">
+      <label for="editar-gasto-data">Data</label>
+      <input type="date" id="editar-gasto-data">
+      <label for="editar-gasto-descricao">Descrição</label>
+      <input type="text" id="editar-gasto-descricao" placeholder="Ex: Supermercado" maxlength="200">
+      <label for="editar-gasto-categoria">Categoria</label>
+      <input type="text" id="editar-gasto-categoria" placeholder="Ex: Alimentação" maxlength="80">
+      <label for="editar-gasto-valor">Valor (R$)</label>
+      <input type="text" id="editar-gasto-valor" inputmode="decimal" placeholder="Ex: 150,00">
+      <div class="modal-botoes">
+        <button type="button" class="btn-modal-cancelar" id="btn-editar-gasto-cancelar">Cancelar</button>
+        <button type="button" class="btn-modal-confirmar" id="btn-editar-gasto-confirmar">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Editar lembrete -->
+  <div id="modal-editar-lembrete-overlay" class="modal-overlay" role="dialog" aria-labelledby="modal-editar-lembrete-titulo" aria-modal="true">
+    <div class="modal-saldo modal-editar">
+      <h3 id="modal-editar-lembrete-titulo">Alterar lembrete</h3>
+      <input type="hidden" id="editar-lembrete-id">
+      <label for="editar-lembrete-data">Data</label>
+      <input type="date" id="editar-lembrete-data">
+      <label for="editar-lembrete-hora">Hora</label>
+      <input type="text" id="editar-lembrete-hora" placeholder="HH:MM" maxlength="5">
+      <label for="editar-lembrete-titulo">Título</label>
+      <input type="text" id="editar-lembrete-titulo" placeholder="Ex: Pagar conta" maxlength="200">
+      <div class="modal-botoes">
+        <button type="button" class="btn-modal-cancelar" id="btn-editar-lembrete-cancelar">Cancelar</button>
+        <button type="button" class="btn-modal-confirmar" id="btn-editar-lembrete-confirmar">Salvar</button>
       </div>
     </div>
   </div>
@@ -1105,19 +1224,34 @@
           const tr = document.createElement('tr');
           const pago = isPago(g);
           const statusBadge = pago ? '<span class="badge-pago">Pago</span>' : '<span class="badge-pendente">Pendente</span>';
-          const btn = pago ? '' : '<button type="button" class="btn-pago" data-gasto-id="' + (g.id || '') + '" data-gasto-valor="' + valorGasto(g) + '" data-gasto-tabela="Gastos">Marcar como pago</button>';
+          const valorNum = valorGasto(g);
+          const btnPago = pago ? '' : '<button type="button" class="btn-pago" data-gasto-id="' + (g.id || '') + '" data-gasto-valor="' + valorNum + '" data-gasto-tabela="Gastos">Marcar como pago</button>';
+          const acoes = '<div class="acoes-celula"><button type="button" class="btn-alterar" data-gasto-id="' + (g.id || '') + '" data-gasto-data="' + (g.data || '') + '" data-gasto-descricao="' + (g.descricao || '').replace(/"/g, '&quot;') + '" data-gasto-categoria="' + (g.categoria || 'Outros').replace(/"/g, '&quot;') + '" data-gasto-valor="' + valorNum + '">Alterar</button>' + btnPago + '</div>';
           tr.innerHTML = `
             <td>${formatarData(g.data)}</td>
             <td>${(g.descricao || '—').toString().slice(0, 40)}</td>
             <td>${(g.categoria || 'Outros')}</td>
-            <td class="valor-positivo">${formatarMoeda(valorGasto(g))}</td>
+            <td class="valor-positivo">${formatarMoeda(valorNum)}</td>
             <td>${statusBadge}</td>
-            <td>${btn}</td>
+            <td>${acoes}</td>
           `;
           tbodyG.appendChild(tr);
-          if (!pago && tr.querySelector('.btn-pago')) {
-            tr.querySelector('.btn-pago').addEventListener('click', function() {
+          const btnPagoEl = tr.querySelector('.btn-pago');
+          if (btnPagoEl) {
+            btnPagoEl.addEventListener('click', function() {
               marcarComoPago(this.dataset.gastoId, parseFloat(this.dataset.gastoValor) || 0, this.dataset.gastoTabela || 'Gastos');
+            });
+          }
+          const btnAlterarG = tr.querySelector('.btn-alterar');
+          if (btnAlterarG) {
+            btnAlterarG.addEventListener('click', function() {
+              abrirModalEditarGasto({
+                id: this.dataset.gastoId,
+                data: this.dataset.gastoData,
+                descricao: this.dataset.gastoDescricao,
+                categoria: this.dataset.gastoCategoria,
+                valor: this.dataset.gastoValor
+              });
             });
           }
         });
@@ -1135,16 +1269,25 @@
           const status = l.notificado
             ? '<span class="badge-notificado">Notificado</span>'
             : '<span class="badge-pendente">Pendente</span>';
+          const tituloEsc = (l.titulo || '').toString().replace(/"/g, '&quot;');
           tr.innerHTML = `
             <td>${formatarData(l.data)}</td>
             <td>${(l.hora || '—').toString().slice(0, 5)}</td>
             <td>${(l.titulo || '—').toString().slice(0, 50)}</td>
             <td>${status}</td>
-            <td><button type="button" class="btn-apagar" data-lembrete-id="${l.id || ''}">Apagar</button></td>
+            <td><div class="acoes-celula"><button type="button" class="btn-alterar" data-lembrete-id="${l.id || ''}" data-lembrete-data="${l.data || ''}" data-lembrete-hora="${(l.hora || '').toString().slice(0, 5)}" data-lembrete-titulo="${tituloEsc}">Alterar</button><button type="button" class="btn-apagar" data-lembrete-id="${l.id || ''}">Apagar</button></div></td>
           `;
           tbodyL.appendChild(tr);
           tr.querySelector('.btn-apagar').addEventListener('click', function() {
             apagarLembrete(this.dataset.lembreteId);
+          });
+          tr.querySelector('.btn-alterar').addEventListener('click', function() {
+            abrirModalEditarLembrete({
+              id: this.dataset.lembreteId,
+              data: this.dataset.lembreteData,
+              hora: this.dataset.lembreteHora,
+              titulo: this.dataset.lembreteTitulo
+            });
           });
         });
       }
@@ -1323,6 +1466,112 @@
         if (ev.key === 'Escape') fecharModalSaldo();
       });
     }
+
+    // ---------- Modal Editar Gasto ----------
+    function dataParaInputDate(s) {
+      if (!s) return '';
+      const d = new Date(s);
+      if (isNaN(d.getTime())) return '';
+      const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+      return y + '-' + m + '-' + day;
+    }
+    function abrirModalEditarGasto(g) {
+      $('editar-gasto-id').value = g.id || '';
+      $('editar-gasto-data').value = dataParaInputDate(g.data);
+      $('editar-gasto-descricao').value = (g.descricao || '').replace(/&quot;/g, '"');
+      $('editar-gasto-categoria').value = (g.categoria || '').replace(/&quot;/g, '"');
+      $('editar-gasto-valor').value = (g.valor != null && g.valor !== '') ? Number(g.valor).toFixed(2).replace('.', ',') : '';
+      $('modal-editar-gasto-overlay').classList.add('ativo');
+      $('editar-gasto-descricao').focus();
+    }
+    function fecharModalEditarGasto() {
+      $('modal-editar-gasto-overlay').classList.remove('ativo');
+    }
+    async function salvarGastoEditado() {
+      const id = $('editar-gasto-id').value.trim();
+      const data = $('editar-gasto-data').value.trim();
+      const descricao = $('editar-gasto-descricao').value.trim();
+      const categoria = $('editar-gasto-categoria').value.trim() || 'Outros';
+      const valorStr = ($('editar-gasto-valor').value || '').trim().replace(/\./g, '').replace(',', '.');
+      const valor = parseFloat(valorStr);
+      if (!id || !clientSupabase) return;
+      if (!descricao) { alert('Informe a descrição.'); return; }
+      if (isNaN(valor) || valor < 0) { alert('Informe um valor válido.'); return; }
+      if (!data) { alert('Informe a data.'); return; }
+      try {
+        const payload = { data: data, descricao: descricao, categoria: categoria, valor_total: valor };
+        let r = await clientSupabase.from('Gastos').update(payload).eq('id', id).select();
+        if (r && r.error && (r.error.message || '').toLowerCase().includes('valor_total')) {
+          r = await clientSupabase.from('Gastos').update({ data: data, descricao: descricao, categoria: categoria, valor: valor }).eq('id', id).select();
+        }
+        if (r && !r.error) {
+          fecharModalEditarGasto();
+          carregarDados();
+        } else {
+          alert(r && r.error ? r.error.message : 'Não foi possível atualizar o gasto.');
+        }
+      } catch (e) {
+        console.error('Erro ao editar gasto:', e);
+        alert('Erro ao salvar. Verifique o console (F12).');
+      }
+    }
+    if ($('btn-editar-gasto-cancelar')) $('btn-editar-gasto-cancelar').addEventListener('click', fecharModalEditarGasto);
+    if ($('btn-editar-gasto-confirmar')) $('btn-editar-gasto-confirmar').addEventListener('click', salvarGastoEditado);
+    if ($('modal-editar-gasto-overlay')) {
+      $('modal-editar-gasto-overlay').addEventListener('click', function(ev) { if (ev.target === this) fecharModalEditarGasto(); });
+    }
+
+    // ---------- Modal Editar Lembrete ----------
+    function abrirModalEditarLembrete(l) {
+      $('editar-lembrete-id').value = l.id || '';
+      $('editar-lembrete-data').value = dataParaInputDate(l.data);
+      $('editar-lembrete-hora').value = (l.hora || '').toString().slice(0, 5);
+      $('editar-lembrete-titulo').value = (l.titulo || '').replace(/&quot;/g, '"');
+      $('modal-editar-lembrete-overlay').classList.add('ativo');
+      $('editar-lembrete-titulo').focus();
+    }
+    function fecharModalEditarLembrete() {
+      $('modal-editar-lembrete-overlay').classList.remove('ativo');
+    }
+    async function salvarLembreteEditado() {
+      const id = $('editar-lembrete-id').value.trim();
+      const data = $('editar-lembrete-data').value.trim();
+      const hora = ($('editar-lembrete-hora').value || '').trim().slice(0, 5);
+      const titulo = $('editar-lembrete-titulo').value.trim();
+      if (!id || !clientSupabase) return;
+      if (!titulo) { alert('Informe o título do lembrete.'); return; }
+      if (!data) { alert('Informe a data.'); return; }
+      try {
+        const payload = { data: data, hora: hora || null, titulo: titulo };
+        const r = await clientSupabase.from('Lembretes').update(payload).eq('id', id).select();
+        if (r && !r.error) {
+          fecharModalEditarLembrete();
+          carregarDados();
+        } else {
+          alert(r && r.error ? r.error.message : 'Não foi possível atualizar o lembrete.');
+        }
+      } catch (e) {
+        console.error('Erro ao editar lembrete:', e);
+        alert('Erro ao salvar. Verifique o console (F12).');
+      }
+    }
+    if ($('btn-editar-lembrete-cancelar')) $('btn-editar-lembrete-cancelar').addEventListener('click', fecharModalEditarLembrete);
+    if ($('btn-editar-lembrete-confirmar')) $('btn-editar-lembrete-confirmar').addEventListener('click', salvarLembreteEditado);
+    if ($('modal-editar-lembrete-overlay')) {
+      $('modal-editar-lembrete-overlay').addEventListener('click', function(ev) { if (ev.target === this) fecharModalEditarLembrete(); });
+    }
+
+    // Menu de navegação: destaque suave ao rolar
+    document.querySelectorAll('.nav-menu-item').forEach(function(link) {
+      link.addEventListener('click', function(e) {
+        const secao = document.getElementById((this.getAttribute('data-secao') || '').trim());
+        if (secao) {
+          secao.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          document.querySelectorAll('.nav-menu-item').forEach(function(l) { l.classList.remove('ativo'); });
+          this.classList.add('ativo');
+        }
+      });
+    });
 
     // Se estiver abrindo por file://, o navegador bloqueia acesso ao Supabase (CORS). Mostrar aviso.
     if (window.location.protocol === 'file:') {
