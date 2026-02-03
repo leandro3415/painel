@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
@@ -304,6 +304,89 @@
       align-items: center;
       gap: 0.5rem;
     }
+    .section-header-gastos {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .section-header-gastos .section-title {
+      margin-bottom: 0;
+    }
+    .filtros-gastos {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .filtro-btn {
+      padding: 0.45rem 0.85rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .filtro-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .filtro-btn.ativo { opacity: 1; }
+    .filtro-pagos {
+      background: rgba(125, 211, 160, 0.25);
+      color: #7dd3a0;
+      border: 1px solid rgba(125, 211, 160, 0.4);
+    }
+    .filtro-pagos.ativo {
+      background: rgba(125, 211, 160, 0.45);
+      color: #7dd3a0;
+      border-color: #7dd3a0;
+    }
+    .filtro-pendentes {
+      background: rgba(255, 201, 102, 0.25);
+      color: #ffc966;
+      border: 1px solid rgba(255, 201, 102, 0.4);
+    }
+    .filtro-pendentes.ativo {
+      background: rgba(255, 201, 102, 0.45);
+      color: #ffc966;
+      border-color: #ffc966;
+    }
+    .filtro-lupa {
+      background: rgba(77, 163, 255, 0.25);
+      color: var(--azul-brilho);
+      border: 1px solid rgba(77, 163, 255, 0.4);
+      padding: 0.45rem 0.65rem;
+      font-size: 1rem;
+      line-height: 1;
+    }
+    .filtro-lupa.ativo,
+    .filtro-lupa:hover {
+      background: rgba(77, 163, 255, 0.4);
+      border-color: var(--azul-brilho);
+    }
+    .filtro-search-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .filtro-input {
+      width: 120px;
+      padding: 0.45rem 0.65rem;
+      font-size: 0.85rem;
+      border-radius: 8px;
+      border: 1px solid rgba(77, 163, 255, 0.35);
+      background: rgba(5, 10, 18, 0.6);
+      color: var(--branco);
+      font-family: inherit;
+      transition: width 0.2s;
+    }
+    .filtro-input:focus {
+      outline: none;
+      border-color: var(--azul-brilho);
+    }
+    .filtro-input::placeholder { color: var(--cinza-claro); opacity: 0.8; }
 
     .tabela-box {
       background: linear-gradient(135deg, rgba(15, 39, 68, 0.6) 0%, rgba(10, 22, 40, 0.8) 100%);
@@ -518,6 +601,10 @@
       .chart-wrap { height: 220px; }
       .chart-box h3 { font-size: 0.95rem; }
       .section-title { font-size: 1.05rem; margin-bottom: 0.75rem; }
+      .section-header-gastos { gap: 0.5rem; margin-bottom: 0.75rem; }
+      .filtros-gastos { gap: 0.4rem; }
+      .filtro-btn { padding: 0.4rem 0.65rem; font-size: 0.8rem; }
+      .filtro-input { width: 100px; max-width: 140px; }
       /* Tabelas viram cards no mobile: sem rolagem horizontal */
       .tabela-box {
         padding: 0.75rem 0;
@@ -734,7 +821,17 @@
       </section>
 
       <section id="secao-ultimos-gastos">
-        <h2 class="section-title">💰 Últimos gastos</h2>
+        <div class="section-header-gastos">
+          <h2 class="section-title">💰 Últimos gastos</h2>
+          <div class="filtros-gastos">
+            <button type="button" class="filtro-btn filtro-pagos" id="filtro-pagos" aria-pressed="false">Pagos</button>
+            <button type="button" class="filtro-btn filtro-pendentes" id="filtro-pendentes" aria-pressed="false">Pendentes</button>
+            <div class="filtro-search-wrap">
+              <input type="text" id="busca-gastos" class="filtro-input" placeholder="Buscar..." autocomplete="off" style="display: none;">
+              <button type="button" class="filtro-btn filtro-lupa" id="filtro-lupa" aria-label="Buscar gastos" title="Buscar">🔍</button>
+            </div>
+          </div>
+        </div>
         <div class="tabela-box">
           <table>
             <thead>
@@ -839,6 +936,12 @@
     let chartMeses = null;
     let chartLembretes = null;
     let chartLembretesMes = null;
+
+    // Filtros da seção Últimos gastos
+    let _gastosAtuais = [];
+    let _lembretesAtuais = [];
+    let filtroGastosStatus = 'todos'; // 'todos' | 'pagos' | 'pendentes'
+    let filtroGastosTexto = '';
 
     // Linha de resumo na tabela Gastos (guarda saldo, gastos pagos, gastos pendentes)
     const DESC_RESUMO_GASTOS = '__RESUMO__';
@@ -1077,9 +1180,11 @@
       $('erro').style.display = 'none';
       $('conteudo').style.display = 'block';
 
+      _gastosAtuais = gastos;
+      _lembretesAtuais = lembretes;
       renderizarResumo(gastos, lembretes, perfil);
       renderizarGraficos(gastos, lembretes);
-      renderizarTabelas(gastos, lembretes);
+      aplicarFiltroGastos();
     }
 
     function valorGasto(g) {
@@ -1266,6 +1371,36 @@
       });
     }
 
+    function filtrarGastosPorFiltro(gastos) {
+      const texto = filtroGastosTexto.toLowerCase().trim();
+      return gastos.filter(g => {
+        const pago = isPago(g);
+        if (filtroGastosStatus === 'pagos' && !pago) return false;
+        if (filtroGastosStatus === 'pendentes' && pago) return false;
+        if (texto) {
+          const desc = (g.descricao || '').toLowerCase();
+          const cat = (g.categoria || '').toLowerCase();
+          if (!desc.includes(texto) && !cat.includes(texto)) return false;
+        }
+        return true;
+      });
+    }
+
+    function aplicarFiltroGastos() {
+      const filtrados = filtrarGastosPorFiltro(_gastosAtuais);
+      renderizarTabelas(filtrados, _lembretesAtuais);
+      const btnPagos = $('filtro-pagos');
+      const btnPendentes = $('filtro-pendentes');
+      if (btnPagos) {
+        btnPagos.classList.toggle('ativo', filtroGastosStatus === 'pagos');
+        btnPagos.setAttribute('aria-pressed', filtroGastosStatus === 'pagos');
+      }
+      if (btnPendentes) {
+        btnPendentes.classList.toggle('ativo', filtroGastosStatus === 'pendentes');
+        btnPendentes.setAttribute('aria-pressed', filtroGastosStatus === 'pendentes');
+      }
+    }
+
     function renderizarTabelas(gastos, lembretes) {
       const tbodyG = $('tbody-gastos');
       const emptyG = $('empty-gastos');
@@ -1409,6 +1544,51 @@
     }
 
     $('periodo').addEventListener('change', carregarDados);
+
+    // Submenu Últimos gastos: Pagos (verde), Pendentes (amarelo), Lupa (azul)
+    if ($('filtro-pagos')) {
+      $('filtro-pagos').addEventListener('click', function() {
+        filtroGastosStatus = filtroGastosStatus === 'pagos' ? 'todos' : 'pagos';
+        aplicarFiltroGastos();
+      });
+    }
+    if ($('filtro-pendentes')) {
+      $('filtro-pendentes').addEventListener('click', function() {
+        filtroGastosStatus = filtroGastosStatus === 'pendentes' ? 'todos' : 'pendentes';
+        aplicarFiltroGastos();
+      });
+    }
+    if ($('filtro-lupa')) {
+      $('filtro-lupa').addEventListener('click', function() {
+        const input = $('busca-gastos');
+        if (!input) return;
+        const visivel = input.style.display !== 'none';
+        input.style.display = visivel ? 'none' : '';
+        if (!visivel) {
+          input.focus();
+          input.value = filtroGastosTexto;
+        } else {
+          filtroGastosTexto = '';
+          input.value = '';
+          aplicarFiltroGastos();
+        }
+      });
+    }
+    if ($('busca-gastos')) {
+      $('busca-gastos').addEventListener('input', function() {
+        filtroGastosTexto = this.value;
+        aplicarFiltroGastos();
+      });
+      $('busca-gastos').addEventListener('keydown', function(ev) {
+        if (ev.key === 'Escape') {
+          this.blur();
+          this.style.display = 'none';
+          filtroGastosTexto = '';
+          this.value = '';
+          aplicarFiltroGastos();
+        }
+      });
+    }
 
     // Modal Adicionar saldo
     function abrirModalSaldo() {
