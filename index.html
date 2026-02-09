@@ -1458,7 +1458,8 @@
           const statusBadge = pago ? '<span class="badge-pago">Pago</span>' : '<span class="badge-pendente">Pendente</span>';
           const valorNum = valorGasto(g);
           const btnPago = pago ? '' : '<button type="button" class="btn-pago" data-gasto-id="' + (g.id || '') + '" data-gasto-valor="' + valorNum + '" data-gasto-tabela="Gastos">Marcar como pago</button>';
-          const acoes = '<div class="acoes-celula"><button type="button" class="btn-alterar" data-gasto-id="' + (g.id || '') + '" data-gasto-data="' + (g.data || '') + '" data-gasto-descricao="' + (g.descricao || '').replace(/"/g, '&quot;') + '" data-gasto-categoria="' + (g.categoria || 'Outros').replace(/"/g, '&quot;') + '" data-gasto-valor="' + valorNum + '">Alterar</button>' + btnPago + '</div>';
+          const btnApagarGasto = '<button type="button" class="btn-apagar btn-apagar-gasto" data-gasto-id="' + (g.id || '') + '">Apagar</button>';
+          const acoes = '<div class="acoes-celula"><button type="button" class="btn-alterar" data-gasto-id="' + (g.id || '') + '" data-gasto-data="' + (g.data || '') + '" data-gasto-descricao="' + (g.descricao || '').replace(/"/g, '&quot;') + '" data-gasto-categoria="' + (g.categoria || 'Outros').replace(/"/g, '&quot;') + '" data-gasto-valor="' + valorNum + '">Alterar</button>' + btnPago + btnApagarGasto + '</div>';
           tr.innerHTML = `
             <td data-label="Data">${formatarData(g.data)}</td>
             <td data-label="Descrição">${(g.descricao || '—').toString().slice(0, 40)}</td>
@@ -1484,6 +1485,12 @@
                 categoria: this.dataset.gastoCategoria,
                 valor: this.dataset.gastoValor
               });
+            });
+          }
+          const btnApagarG = tr.querySelector('.btn-apagar-gasto');
+          if (btnApagarG) {
+            btnApagarG.addEventListener('click', function() {
+              apagarGasto(this.dataset.gastoId);
             });
           }
         });
@@ -1569,12 +1576,29 @@
       }
     }
 
+    async function apagarGasto(gastoId) {
+      if (!gastoId || !clientSupabase) return;
+      if (!confirm('Apagar este gasto? Ele será removido do banco de dados.')) return;
+      try {
+        let ok = false;
+        for (const tbl of ['gastos', 'Gastos']) {
+          const r = await clientSupabase.from(tbl).delete().eq('id', gastoId);
+          if (r && !r.error) { ok = true; break; }
+        }
+        if (ok) carregarDados();
+        else alert('Não foi possível apagar o gasto. Verifique políticas RLS (DELETE para anon).');
+      } catch (e) {
+        console.error('Erro ao apagar gasto:', e);
+        alert('Erro ao apagar. Verifique o console (F12).');
+      }
+    }
+
     async function apagarLembrete(lembreteId) {
       if (!lembreteId || !clientSupabase) return;
       if (!confirm('Apagar este lembrete? Ele será removido do banco de dados.')) return;
       try {
         let ok = false;
-        for (const tbl of ['Lembretes']) {
+        for (const tbl of ['lembretes', 'Lembretes']) {
           const r = await clientSupabase.from(tbl).delete().eq('id', lembreteId);
           if (r && !r.error) { ok = true; break; }
         }
@@ -1877,23 +1901,16 @@
       if (!id || !clientSupabase) return;
       if (!titulo) { alert('Informe o título do lembrete.'); return; }
       if (!dataVal) { alert('Informe a data.'); return; }
-      // Supabase Lembretes: colunas em minúsculas (data, hora, titulo) e id é uuid (string)
+      // Supabase: tabela "Lembretes" (L maiúsculo), colunas em minúsculas (data, hora, titulo), id é uuid (string)
       try {
         const payload = { data: dataVal, hora, titulo };
-        let sucesso = false;
-        for (const tbl of ['Lembretes', 'lembretes']) {
-          const r = await clientSupabase.from(tbl).update(payload).eq('id', id).select();
-          if (r && !r.error && r.data && r.data.length > 0) {
-            sucesso = true;
-            break;
-          }
-          if (r && r.error) console.warn('FinLeve update lembrete:', tbl, r.error.message);
-        }
-        if (sucesso) {
+        const r = await clientSupabase.from('Lembretes').update(payload).eq('id', id).select();
+        if (r && !r.error && r.data && r.data.length > 0) {
           fecharModalEditarLembrete();
           carregarDados();
         } else {
-          alert('Não foi possível atualizar o lembrete no Supabase. Verifique políticas RLS (UPDATE) para a tabela Lembretes. Abra F12 → Console para detalhes.');
+          if (r && r.error) console.error('FinLeve update lembrete:', r.error.message);
+          alert(r && r.error ? r.error.message : 'Não foi possível atualizar o lembrete. Verifique políticas RLS (UPDATE) para a tabela Lembretes.');
         }
       } catch (e) {
         console.error('Erro ao editar lembrete:', e);
